@@ -53,8 +53,11 @@ export default function CartScreen() {
             <View style={styles.dateHeader}>
               <Text style={styles.dateHeaderText}>{'Delivery: ' + date}</Text>
             </View>
-            {dateItems.map(item => (
-              <View key={item.id + item.deliveryDate} style={styles.card}>
+            {dateItems.map((item, index) => (
+              <View
+                key={`${item.id}-${item.deliveryDate}-${item.selectedPortion ?? 'default'}-${item.spiceLevel ?? 'none'}-${index}`}
+                style={styles.card}
+              >
                 {item.url ? (
                   <Image source={{ uri: item.url }} style={styles.image} />
                 ) : (
@@ -62,18 +65,30 @@ export default function CartScreen() {
                 )}
                 <View style={styles.info}>
                   <Text style={styles.name}>{item.name}</Text>
+                  {item.selectedPortion && (
+                    <Text style={styles.subText}>{'Portion: ' + item.selectedPortion}</Text>
+                  )}
+                  {item.spiceLevel && (
+                    <Text style={styles.subText}>{'Spice: ' + item.spiceLevel}</Text>
+                  )}
                   <Text style={styles.price}>{'$' + (item.price * item.quantity).toFixed(2)}</Text>
                   <View style={styles.qtyRow}>
                     <TouchableOpacity
                       style={styles.qtyBtn}
-                      onPress={() => cartStore.updateQuantity(item.id, item.deliveryDate, item.quantity - 1)}
+                      onPress={() => cartStore.updateQuantity(
+                        item.id, item.deliveryDate, item.quantity - 1,
+                        item.selectedPortion, item.spiceLevel
+                      )}
                     >
                       <Text style={styles.qtyBtnText}>{'-'}</Text>
                     </TouchableOpacity>
                     <Text style={styles.qty}>{item.quantity}</Text>
                     <TouchableOpacity
                       style={styles.qtyBtn}
-                      onPress={() => cartStore.updateQuantity(item.id, item.deliveryDate, item.quantity + 1)}
+                      onPress={() => cartStore.updateQuantity(
+                        item.id, item.deliveryDate, item.quantity + 1,
+                        item.selectedPortion, item.spiceLevel
+                      )}
                     >
                       <Text style={styles.qtyBtnText}>{'+'}</Text>
                     </TouchableOpacity>
@@ -118,6 +133,7 @@ const styles = StyleSheet.create({
   imagePlaceholder: { backgroundColor: '#F0EDE8' },
   info: { flex: 1, padding: 12, justifyContent: 'space-between' },
   name: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
+  subText: { fontSize: 12, color: '#888', marginTop: 2 },
   price: { fontSize: 15, fontWeight: '700', color: '#E07B39' },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   qtyBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F5F0EB', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: '#E0D8D0' },

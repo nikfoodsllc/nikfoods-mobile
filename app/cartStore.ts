@@ -7,6 +7,8 @@ type CartItem = {
   quantity: number;
   deliveryDate: string;
   deliveryDateFormatted: string;
+  selectedPortion?: string;
+  spiceLevel?: string;
 };
 
 let cart: CartItem[] = [];
@@ -17,7 +19,11 @@ export const cartStore = {
 
   addItem: (item: Omit<CartItem, 'quantity'>) => {
     const existing = cart.find(
-      c => c.id === item.id && c.deliveryDate === item.deliveryDate
+      c =>
+        c.id === item.id &&
+        c.deliveryDate === item.deliveryDate &&
+        c.selectedPortion === item.selectedPortion &&
+        c.spiceLevel === item.spiceLevel
     );
     if (existing) {
       existing.quantity += 1;
@@ -27,18 +33,28 @@ export const cartStore = {
     listeners.forEach(l => l());
   },
 
-  removeItem: (id: string, deliveryDate: string) => {
-    cart = cart.filter(c => !(c.id === id && c.deliveryDate === deliveryDate));
+  removeItem: (id: string, deliveryDate: string, selectedPortion?: string, spiceLevel?: string) => {
+    cart = cart.filter(c => !(
+      c.id === id &&
+      c.deliveryDate === deliveryDate &&
+      c.selectedPortion === selectedPortion &&
+      c.spiceLevel === spiceLevel
+    ));
     listeners.forEach(l => l());
   },
 
-  updateQuantity: (id: string, deliveryDate: string, quantity: number) => {
+  updateQuantity: (id: string, deliveryDate: string, quantity: number, selectedPortion?: string, spiceLevel?: string) => {
     if (quantity <= 0) {
-      cartStore.removeItem(id, deliveryDate);
+      cartStore.removeItem(id, deliveryDate, selectedPortion, spiceLevel);
       return;
     }
     cart = cart.map(c =>
-      c.id === id && c.deliveryDate === deliveryDate ? { ...c, quantity } : c
+      c.id === id &&
+      c.deliveryDate === deliveryDate &&
+      c.selectedPortion === selectedPortion &&
+      c.spiceLevel === spiceLevel
+        ? { ...c, quantity }
+        : c
     );
     listeners.forEach(l => l());
   },

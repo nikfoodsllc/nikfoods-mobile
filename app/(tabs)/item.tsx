@@ -17,16 +17,34 @@ type DateOption = {
 };
 
 export default function ItemScreen() {
-  const { id, name, description, price, url, veg, categoryId, listingType } = useLocalSearchParams<{
+  const {
+    id, name, description, price, url, veg,
+    categoryId, listingType,
+    portions: portionsParam,
+    portionPrices: portionPricesParam,
+    hasSpiceLevel: hasSpiceLevelParam,
+    spiceLevel: spiceLevelParam,
+  } = useLocalSearchParams<{
     id: string; name: string; description: string; price: string;
     url: string; veg: string; categoryId: string; listingType: string;
+    portions: string; portionPrices: string;
+    hasSpiceLevel: string; spiceLevel: string; hasCombo: string;
   }>();
+
+  const portions: string[] = JSON.parse(portionsParam || '[]');
+  const portionPrices: number[] = JSON.parse(portionPricesParam || '[]');
+  const hasSpiceLevel = hasSpiceLevelParam === 'true';
+  const spiceLevels: string[] = JSON.parse(spiceLevelParam || '[]');
+  const isVeg = veg === 'true';
+  const hasPortions = portions.length > 0 && portionPrices.length > 0;
 
   const [availableDates, setAvailableDates] = useState<DateOption[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateOption | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState(false);
+  const [selectedPortionIndex, setSelectedPortionIndex] = useState(0);
+  const [selectedSpiceLevel, setSelectedSpiceLevel] = useState<string>('');
 
   useEffect(() => {
     fetch(`${API_BASE}/available-dates`)
@@ -43,8 +61,13 @@ export default function ItemScreen() {
       .catch(() => setLoading(false));
   }, []);
 
+  const itemPrice = hasPortions ? portionPrices[selectedPortionIndex] : parseFloat(price || '0');
+
   const handleAdd = () => {
-    if (!selectedDate) { setShowDatePicker(true); return; }
+    if (!selectedDate) {
+      setShowDatePicker(true);
+      return;
+    }
     cartStore.addItem({
       id: id,
       name: name,
@@ -53,13 +76,12 @@ export default function ItemScreen() {
       veg: isVeg,
       deliveryDate: selectedDate.date,
       deliveryDateFormatted: selectedDate.fullDate || selectedDate.formattedDate,
+      ...(hasPortions && { selectedPortion: portions[selectedPortionIndex] }),
+      ...(hasSpiceLevel && selectedSpiceLevel && { spiceLevel: selectedSpiceLevel }),
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
-
-  const itemPrice = parseFloat(price || '0');
-  const isVeg = veg === 'true';
 
   return (
     <View style={styles.container}>
@@ -73,6 +95,7 @@ export default function ItemScreen() {
         ) : (
           <View style={styles.imagePlaceholder} />
         )}
+
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text style={styles.name}>{name}</Text>
@@ -83,9 +106,51 @@ export default function ItemScreen() {
               </Text>
             </View>
           </View>
+
           <Text style={styles.price}>{'$' + itemPrice.toFixed(2)}</Text>
           <Text style={styles.description}>{description}</Text>
 
+          {/* Portion Selector */}
+          {hasPortions && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Select Your Portion</Text>
+              {portions.map((portion, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.optionRow, selectedPortionIndex === index && styles.optionRowSelected]}
+                  onPress={() => setSelectedPortionIndex(index)}
+                >
+                  <View style={[styles.radio, selectedPortionIndex === index && styles.radioSelected]}>
+                    {selectedPortionIndex === index && <View style={styles.radioDot} />}
+                  </View>
+                  <Text style={styles.optionLabel}>{portion}</Text>
+                  <Text style={styles.optionPrice}>{'$' + portionPrices[index]?.toFixed(2)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Spice Level Selector */}
+          {hasSpiceLevel && spiceLevels.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Select Spice Level</Text>
+              <View style={styles.spiceRow}>
+                {spiceLevels.map((level, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.spiceChip, selectedSpiceLevel === level && styles.spiceChipSelected]}
+                    onPress={() => setSelectedSpiceLevel(level)}
+                  >
+                    <Text style={[styles.spiceChipText, selectedSpiceLevel === level && styles.spiceChipTextSelected]}>
+                      {level}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Date Selector */}
           <View style={styles.dateSection}>
             <Text style={styles.dateLabel}>{'Select delivery date'}</Text>
             {loading ? (
@@ -140,6 +205,9 @@ export default function ItemScreen() {
                       <Text style={[styles.dateOptionText, selectedDate?.date === d.date && styles.dateOptionTextSelected]}>
                         {d.fullDate || d.formattedDate}
                       </Text>
+                      {d.formattedDate && d.fullDate && (
+                        <Text style={styles.dateOptionSub}>{d.formattedDate}</Text>
+                      )}
                     </View>
                     {selectedDate?.date === d.date && <Text style={styles.checkmark}>{'✓'}</Text>}
                   </TouchableOpacity>
@@ -171,6 +239,20 @@ const styles = StyleSheet.create({
   vegText: { fontSize: 12, fontWeight: '500' },
   price: { fontSize: 24, fontWeight: '700', color: '#E07B39', marginBottom: 16 },
   description: { fontSize: 15, color: '#555', lineHeight: 24 },
+  section: { marginTop: 24 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+  optionRow: { flexDirection: 'row', alignItems: 'center', padding: 14, borderWidth: 1, borderColor: '#E0D8D0', borderRadius: 12, marginBottom: 8, backgroundColor: '#fff' },
+  optionRowSelected: { borderColor: '#E07B39', backgroundColor: '#FFF5EE' },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#ccc', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  radioSelected: { borderColor: '#E07B39' },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E07B39' },
+  optionLabel: { flex: 1, fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
+  optionPrice: { fontSize: 15, fontWeight: '700', color: '#E07B39' },
+  spiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  spiceChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E0D8D0', backgroundColor: '#fff' },
+  spiceChipSelected: { backgroundColor: '#E07B39', borderColor: '#E07B39' },
+  spiceChipText: { fontSize: 13, color: '#555', fontWeight: '500' },
+  spiceChipTextSelected: { color: '#fff' },
   dateSection: { marginTop: 24 },
   dateLabel: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', marginBottom: 10 },
   dateSelectorLoading: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
@@ -194,6 +276,7 @@ const styles = StyleSheet.create({
   dateOptionSelected: {},
   dateOptionText: { fontSize: 15, color: '#333', fontWeight: '500' },
   dateOptionTextSelected: { color: '#E07B39', fontWeight: '600' },
+  dateOptionSub: { fontSize: 12, color: '#888', marginTop: 2 },
   checkmark: { color: '#E07B39', fontSize: 16, fontWeight: '700' },
   modalClose: { marginTop: 20, alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E0D8D0' },
   modalCloseText: { fontSize: 15, color: '#666', fontWeight: '500' },

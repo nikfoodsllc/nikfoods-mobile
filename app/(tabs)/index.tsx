@@ -19,6 +19,11 @@ type FoodItem = {
   price: number;
   url: string;
   veg: boolean;
+  portions: string[];
+  portionPrices: number[];
+  hasSpiceLevel: boolean;
+  spiceLevel: string[];
+  hasCombo: boolean;
 };
 
 export default function MenuScreen() {
@@ -28,6 +33,7 @@ export default function MenuScreen() {
   const [loading, setLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [vegOnly, setVegOnly] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/categories`)
@@ -47,6 +53,7 @@ export default function MenuScreen() {
   const loadCategory = (cat: Category) => {
     setSelectedCategory(cat);
     setItemsLoading(true);
+    setItems([]);
 
     fetch(`${API_BASE}/food-items-by-category?categoryId=${cat._id}`)
       .then(r => r.json())
@@ -84,12 +91,33 @@ export default function MenuScreen() {
     </View>
   );
 
+  const displayedItems = vegOnly ? items.filter(item => item.veg) : items;
+
+  const getDisplayPrice = (item: FoodItem) => {
+    if (item.portions && item.portions.length > 0 && item.portionPrices && item.portionPrices.length > 0) {
+      const minPrice = Math.min(...item.portionPrices);
+      return `From $${minPrice.toFixed(2)}`;
+    }
+    return '$' + (item.price || 0).toFixed(2);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>NikFoods</Text>
         <Text style={styles.headerSub}>Authentic Indian food</Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.vegToggleRow}
+        onPress={() => setVegOnly(!vegOnly)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.vegToggleLabel}>Veg Only</Text>
+        <View style={[styles.toggleTrack, { backgroundColor: vegOnly ? '#2E7D32' : '#ccc' }]}>
+          <View style={[styles.toggleThumb, { transform: [{ translateX: vegOnly ? 20 : 2 }] }]} />
+        </View>
+      </TouchableOpacity>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catBar} contentContainerStyle={styles.catBarContent}>
         {categories.map(cat => (
@@ -98,7 +126,7 @@ export default function MenuScreen() {
             style={[styles.catChip, selectedCategory?._id === cat._id && styles.catChipActive]}
             onPress={() => loadCategory(cat)}
           >
-            <Text style={[styles.catChipText, selectedCategory?._id === cat._id && styles.catChipTextActive, { color: selectedCategory?._id === cat._id ? '#ffffff' : '#000000' }]}>
+            <Text style={[styles.catChipText, selectedCategory?._id === cat._id && styles.catChipTextActive]}>
               {cat.name}
             </Text>
           </TouchableOpacity>
@@ -112,7 +140,7 @@ export default function MenuScreen() {
       )}
 
       <FlatList
-        data={items}
+        data={displayedItems}
         keyExtractor={(item, index) => `${item._id}-${index}`}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
@@ -129,8 +157,27 @@ export default function MenuScreen() {
               </View>
               <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
               <View style={styles.priceRow}>
-                <Text style={styles.price}>{'$' + item.price?.toFixed(2)}</Text>
-                <TouchableOpacity style={styles.addBtn} onPress={() => router.push({ pathname: '/(tabs)/item', params: { id: item._id, name: item.name, description: item.description, price: String(item.price), url: item.url, veg: String(item.veg), categoryId: selectedCategory?._id, listingType: selectedCategory?.listingType } })}>
+                <Text style={styles.price}>{getDisplayPrice(item)}</Text>
+                <TouchableOpacity
+                  style={styles.addBtn}
+                  onPress={() => router.push({
+                    pathname: '/(tabs)/item',
+                    params: {
+                      id: item._id,
+                      name: item.name,
+                      description: item.description,
+                      price: String(item.price),
+                      url: item.url,
+                      veg: String(item.veg),
+                      categoryId: selectedCategory?._id,
+                      listingType: selectedCategory?.listingType,
+                      portions: JSON.stringify(item.portions || []),
+                      portionPrices: JSON.stringify(item.portionPrices || []),
+                      hasSpiceLevel: String(item.hasSpiceLevel || false),
+                      spiceLevel: JSON.stringify(item.spiceLevel || []),
+                      hasCombo: String(item.hasCombo || false),
+                    }
+                  })}>
                   <Text style={styles.addBtnText}>Add</Text>
                 </TouchableOpacity>
               </View>
@@ -150,11 +197,15 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#E07B39', paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20 },
   headerTitle: { fontSize: 28, fontWeight: '700', color: '#fff' },
   headerSub: { fontSize: 14, color: '#FFE5D0', marginTop: 2 },
+  vegToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginRight: 16, marginTop: 8, gap: 8 },
+  vegToggleLabel: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  toggleTrack: { width: 44, height: 26, borderRadius: 13, justifyContent: 'center', paddingHorizontal: 2 },
+  toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
   catBar: { height: 60, backgroundColor: '#fff', borderBottomWidth: 0.5, borderBottomColor: '#E8E8E4' },
   catBarContent: { paddingHorizontal: 16, gap: 8, paddingVertical: 12, alignItems: 'center' },
   catChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F5F0EB', borderWidth: 1, borderColor: '#E0D8D0', height: 36, justifyContent: 'center', alignItems: 'center' },
   catChipActive: { backgroundColor: '#E07B39', borderColor: '#E07B39' },
-  catChipText: { fontSize: 13, fontWeight: '500' },
+  catChipText: { fontSize: 13, fontWeight: '500', color: '#000000' },
   catChipTextActive: { fontSize: 13, fontWeight: '500', color: '#ffffff' },
   loadingOverlay: { position: 'absolute', top: 200, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   list: { padding: 16, gap: 12 },
