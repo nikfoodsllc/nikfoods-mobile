@@ -55,3 +55,4 @@ export const authStore = {
     return () => { listeners = listeners.filter(l => l !== listener); };
   },
 };
+export default authStore;

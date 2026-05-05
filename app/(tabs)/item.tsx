@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { cartStore } from '../cartStore';
+import { itemCache } from '../itemCache';
 
 const API_BASE = 'https://www.nikfoods.com/api';
 
@@ -12,41 +13,98 @@ type DateOption = {
   fullDate: string;
   isPast: boolean;
   isPastCutoff: boolean;
-  flatCategoryEnabled: boolean;
-  dayWiseCategoryEnabled: boolean;
+};
+
+type SectionItem = {
+  _id: string;
+  item: {
+    _id: string;
+    name: string;
+    description: string;
+    price: number;
+    veg: boolean;
+    url: string;
+  };
+  portion: string;
+  price: number;
+  portionId: string;
+  isDefault: boolean;
+  isAvailable: boolean;
+};
+
+type Section = {
+  _id: string;
+  title: string;
+  selectedItems: SectionItem[];
+  minSelection: number;
+  maxSelection: number;
+  isRequired: boolean;
+  sequence: number;
 };
 
 export default function ItemScreen() {
   const {
     id, name, description, price, url, veg,
-    categoryId, listingType,
-    portions: portionsParam,
-    portionPrices: portionPricesParam,
-    hasSpiceLevel: hasSpiceLevelParam,
-    spiceLevel: spiceLevelParam,
+    categoryId, listingType, fixedDeliveryDate,
   } = useLocalSearchParams<{
     id: string; name: string; description: string; price: string;
     url: string; veg: string; categoryId: string; listingType: string;
-    portions: string; portionPrices: string;
-    hasSpiceLevel: string; spiceLevel: string; hasCombo: string;
+    fixedDeliveryDate: string;
   }>();
 
-  const portions: string[] = JSON.parse(portionsParam || '[]');
-  const portionPrices: number[] = JSON.parse(portionPricesParam || '[]');
-  const hasSpiceLevel = hasSpiceLevelParam === 'true';
-  const spiceLevels: string[] = JSON.parse(spiceLevelParam || '[]');
+  const cached = itemCache.get(id) || {};
+  const portions: string[] = cached.portions || [];
+  const portionPrices: number[] = cached.portionPrices || [];
+  const hasSpiceLevel: boolean = cached.hasSpiceLevel || false;
+  const spiceLevels: string[] = cached.spiceLevel || [];
+  const hasCombo: boolean = cached.hasCombo || false;
+  const isEco: boolean = cached.isEcoFriendlyContainer || false;
+  const ecoCharge: number = cached.ecoContainerCharge || 0;
+  const sections: Section[] = cached.sections || [];
   const isVeg = veg === 'true';
   const hasPortions = portions.length > 0 && portionPrices.length > 0;
+  const isDayWise = listingType === 'day-wise' && !!fixedDeliveryDate;
 
   const [availableDates, setAvailableDates] = useState<DateOption[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateOption | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isDayWise);
   const [added, setAdded] = useState(false);
   const [selectedPortionIndex, setSelectedPortionIndex] = useState(0);
   const [selectedSpiceLevel, setSelectedSpiceLevel] = useState<string>('');
+  const [ecoContainer, setEcoContainer] = useState(false);
+  const [sectionSelections, setSectionSelections] = useState<Record<string, string>>(() => {
+    const defaults: Record<string, string> = {};
+    if (cached.sections) {
+      (cached.sections as Section[]).forEach(section => {
+        const defaultItem = section.selectedItems.find(si => si.isDefault);
+        if (defaultItem) {
+          defaults[section._id] = defaultItem.portionId;
+        } else if (section.selectedItems.length > 0) {
+          defaults[section._id] = section.selectedItems[0].portionId;
+        }
+      });
+    }
+    return defaults;
+  });
 
   useEffect(() => {
+    if (isDayWise && fixedDeliveryDate) {
+      const formatted = new Date(fixedDeliveryDate).toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      });
+      setSelectedDate({
+        id: fixedDeliveryDate,
+        date: fixedDeliveryDate,
+        formattedDate: formatted,
+        fullDate: formatted,
+        isPast: false,
+        isPastCutoff: false,
+      });
+      setLoading(false);
+      return;
+    }
+
     fetch(`${API_BASE}/available-dates`)
       .then(r => r.json())
       .then(data => {
@@ -61,16 +119,38 @@ export default function ItemScreen() {
       .catch(() => setLoading(false));
   }, []);
 
-  const itemPrice = hasPortions ? portionPrices[selectedPortionIndex] : parseFloat(price || '0');
+  const basePrice = hasPortions ? portionPrices[selectedPortionIndex] : parseFloat(price || '0');
+
+  const extraFromSections = Object.entries(sectionSelections).reduce((sum, [sectionId, portionId]) => {
+    for (const section of sections) {
+      const found = section.selectedItems.find(si => si.portionId === portionId);
+      if (found) return sum + (found.price || 0);
+    }
+    return sum;
+  }, 0);
+
+  const ecoExtra = ecoContainer ? ecoCharge : 0;
+  const itemPrice = basePrice + extraFromSections + ecoExtra;
+
+  const allRequiredSectionsSelected = sections
+    .filter(s => s.isRequired)
+    .every(s => sectionSelections[s._id]);
 
   const handleAdd = () => {
     if (!selectedDate) {
       setShowDatePicker(true);
       return;
     }
+    if (hasCombo && !allRequiredSectionsSelected) return;
+
+    const comboDesc = sections.map(s => {
+      const sel = s.selectedItems.find(si => si.portionId === sectionSelections[s._id]);
+      return sel ? `${s.title}: ${sel.item.name}` : '';
+    }).filter(Boolean).join(', ');
+
     cartStore.addItem({
       id: id,
-      name: name,
+      name: hasCombo && comboDesc ? `${name} (${comboDesc})` : name,
       price: itemPrice,
       url: url || '',
       veg: isVeg,
@@ -83,9 +163,20 @@ export default function ItemScreen() {
     setTimeout(() => setAdded(false), 2000);
   };
 
+  const selectSectionItem = (sectionId: string, portionId: string) => {
+    setSectionSelections(prev => ({ ...prev, [sectionId]: portionId }));
+  };
+
+  const canAddToCart = selectedDate &&
+    (!hasCombo || allRequiredSectionsSelected) &&
+    (!hasSpiceLevel || spiceLevels.length === 0 || selectedSpiceLevel);
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+      >
         <Text style={styles.backBtnText}>{'← Back'}</Text>
       </TouchableOpacity>
 
@@ -133,7 +224,10 @@ export default function ItemScreen() {
           {/* Spice Level Selector */}
           {hasSpiceLevel && spiceLevels.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Spice Level</Text>
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>Select Spice Level</Text>
+                <Text style={styles.requiredGreen}>Required</Text>
+              </View>
               <View style={styles.spiceRow}>
                 {spiceLevels.map((level, index) => (
                   <TouchableOpacity
@@ -150,23 +244,99 @@ export default function ItemScreen() {
             </View>
           )}
 
-          {/* Date Selector */}
-          <View style={styles.dateSection}>
-            <Text style={styles.dateLabel}>{'Select delivery date'}</Text>
-            {loading ? (
-              <View style={styles.dateSelectorLoading}>
-                <ActivityIndicator size="small" color="#E07B39" />
-                <Text style={styles.dateSelectorLoadingText}>{'Loading available dates...'}</Text>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
-                <Text style={[styles.dateSelectorText, !selectedDate && styles.dateSelectorPlaceholder]}>
-                  {selectedDate ? (selectedDate.fullDate || selectedDate.formattedDate) : 'Choose a delivery date'}
+          {/* Combo Sections */}
+          {hasCombo && sections.map(section => (
+            <View key={section._id} style={styles.section}>
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <Text style={[
+                  styles.requiredGreen,
+                  !sectionSelections[section._id] && styles.requiredOrange
+                ]}>
+                  {section.isRequired ? 'Required' : 'Optional'}
                 </Text>
-                <Text style={styles.dateSelectorArrow}>{'▼'}</Text>
+              </View>
+              <Text style={styles.sectionSubtitle}>
+                {'Select ' + section.minSelection + (section.maxSelection > 1 ? '-' + section.maxSelection : '') + ' item' + (section.maxSelection > 1 ? 's' : '')}
+              </Text>
+              {section.selectedItems.map((si, idx) => (
+                <TouchableOpacity
+                  key={si._id || idx}
+                  style={[styles.comboOptionRow, sectionSelections[section._id] === si.portionId && styles.optionRowSelected]}
+                  onPress={() => selectSectionItem(section._id, si.portionId)}
+                >
+                  <View style={[styles.radio, sectionSelections[section._id] === si.portionId && styles.radioSelected]}>
+                    {sectionSelections[section._id] === si.portionId && <View style={styles.radioDot} />}
+                  </View>
+                  {si.item.url ? (
+                    <Image source={{ uri: si.item.url }} style={styles.comboItemImage} />
+                  ) : null}
+                  <View style={styles.comboItemInfo}>
+                    <Text style={styles.comboItemName}>{si.item.name}</Text>
+                    {si.portion ? <Text style={styles.comboItemPortion}>{si.portion}</Text> : null}
+                  </View>
+                  {si.price > 0 && (
+                    <Text style={styles.comboItemPrice}>{'+$' + si.price.toFixed(2)}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+
+          {/* Eco Container */}
+          {isEco && ecoCharge > 0 && (
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.ecoRow}
+                onPress={() => setEcoContainer(!ecoContainer)}
+              >
+                <View style={[styles.checkbox, ecoContainer && styles.checkboxChecked]}>
+                  {ecoContainer && <Text style={styles.checkmark}>{'✓'}</Text>}
+                </View>
+                <View style={styles.ecoInfo}>
+                  <Text style={styles.ecoTitle}>Use Eco-Friendly Container</Text>
+                  <Text style={styles.ecoSubtitle}>Sustainable packaging for a greener planet</Text>
+                </View>
+                <Text style={styles.ecoPrice}>{'+$' + ecoCharge.toFixed(2)}</Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
+
+          {/* Date Section */}
+          {isDayWise ? (
+            <View style={styles.dateSection}>
+              <Text style={styles.dateLabel}>{'Delivery date'}</Text>
+              <View style={styles.fixedDateBox}>
+                <Text style={styles.fixedDateText}>
+                  {'📅 ' + (selectedDate?.fullDate || fixedDeliveryDate)}
+                </Text>
+                <Text style={styles.fixedDateSub}>This item is only available on this date</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.dateSection}>
+              <Text style={styles.dateLabel}>{'Select delivery date'}</Text>
+              {loading ? (
+                <View style={styles.dateSelectorLoading}>
+                  <ActivityIndicator size="small" color="#E07B39" />
+                  <Text style={styles.dateSelectorLoadingText}>{'Loading available dates...'}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+                  <Text style={[styles.dateSelectorText, !selectedDate && styles.dateSelectorPlaceholder]}>
+                    {selectedDate ? (selectedDate.fullDate || selectedDate.formattedDate) : 'Choose a delivery date'}
+                  </Text>
+                  <Text style={styles.dateSelectorArrow}>{'▼'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {hasCombo && !allRequiredSectionsSelected && (
+            <Text style={styles.validationHint}>
+              {'Please make selections for all required sections above'}
+            </Text>
+          )}
         </View>
       </ScrollView>
 
@@ -176,11 +346,11 @@ export default function ItemScreen() {
           <Text style={styles.footerPriceValue}>{'$' + itemPrice.toFixed(2)}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.addBtn, added && styles.addBtnSuccess]}
+          style={[styles.addBtn, added && styles.addBtnSuccess, !canAddToCart && styles.addBtnDisabled]}
           onPress={handleAdd}
         >
           <Text style={styles.addBtnText}>
-            {added ? '✓ Added!' : !selectedDate ? 'Select date first' : 'Add to cart'}
+            {added ? '✓ Added!' : !selectedDate ? 'Select date first' : !canAddToCart ? 'Make selections' : 'Add to cart'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -201,15 +371,10 @@ export default function ItemScreen() {
                     style={[styles.dateOption, selectedDate?.date === d.date && styles.dateOptionSelected]}
                     onPress={() => { setSelectedDate(d); setShowDatePicker(false); }}
                   >
-                    <View>
-                      <Text style={[styles.dateOptionText, selectedDate?.date === d.date && styles.dateOptionTextSelected]}>
-                        {d.fullDate || d.formattedDate}
-                      </Text>
-                      {d.formattedDate && d.fullDate && (
-                        <Text style={styles.dateOptionSub}>{d.formattedDate}</Text>
-                      )}
-                    </View>
-                    {selectedDate?.date === d.date && <Text style={styles.checkmark}>{'✓'}</Text>}
+                    <Text style={[styles.dateOptionText, selectedDate?.date === d.date && styles.dateOptionTextSelected]}>
+                      {d.fullDate || d.formattedDate}
+                    </Text>
+                    {selectedDate?.date === d.date && <Text style={styles.checkmarkDate}>{'✓'}</Text>}
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -239,34 +404,57 @@ const styles = StyleSheet.create({
   vegText: { fontSize: 12, fontWeight: '500' },
   price: { fontSize: 24, fontWeight: '700', color: '#E07B39', marginBottom: 16 },
   description: { fontSize: 15, color: '#555', lineHeight: 24 },
-  section: { marginTop: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+  section: { marginTop: 24, borderTopWidth: 0.5, borderTopColor: '#F0EDE8', paddingTop: 20 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+  sectionSubtitle: { fontSize: 12, color: '#888', marginBottom: 12 },
+  requiredGreen: { fontSize: 11, fontWeight: '600', color: '#2E7D32', backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  requiredOrange: { color: '#E07B39', backgroundColor: '#FFF3E8' },
   optionRow: { flexDirection: 'row', alignItems: 'center', padding: 14, borderWidth: 1, borderColor: '#E0D8D0', borderRadius: 12, marginBottom: 8, backgroundColor: '#fff' },
   optionRowSelected: { borderColor: '#E07B39', backgroundColor: '#FFF5EE' },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#ccc', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  comboOptionRow: { flexDirection: 'row', alignItems: 'center', padding: 12, borderWidth: 1, borderColor: '#E0D8D0', borderRadius: 12, marginBottom: 8, backgroundColor: '#fff', gap: 10 },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#ccc', justifyContent: 'center', alignItems: 'center', marginRight: 4 },
   radioSelected: { borderColor: '#E07B39' },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E07B39' },
   optionLabel: { flex: 1, fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
   optionPrice: { fontSize: 15, fontWeight: '700', color: '#E07B39' },
+  comboItemImage: { width: 44, height: 44, borderRadius: 8 },
+  comboItemInfo: { flex: 1 },
+  comboItemName: { fontSize: 14, fontWeight: '500', color: '#1A1A1A' },
+  comboItemPortion: { fontSize: 12, color: '#888', marginTop: 2 },
+  comboItemPrice: { fontSize: 13, fontWeight: '600', color: '#E07B39' },
   spiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   spiceChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E0D8D0', backgroundColor: '#fff' },
   spiceChipSelected: { backgroundColor: '#E07B39', borderColor: '#E07B39' },
   spiceChipText: { fontSize: 13, color: '#555', fontWeight: '500' },
   spiceChipTextSelected: { color: '#fff' },
+  ecoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: 1, borderColor: '#E0D8D0', borderRadius: 12, backgroundColor: '#fff' },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: '#E0D8D0', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: '#2E7D32', borderColor: '#2E7D32' },
+  checkmark: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  ecoInfo: { flex: 1 },
+  ecoTitle: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
+  ecoSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
+  ecoPrice: { fontSize: 14, fontWeight: '600', color: '#2E7D32' },
   dateSection: { marginTop: 24 },
   dateLabel: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', marginBottom: 10 },
+  fixedDateBox: { backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: '#BAE6FD', borderRadius: 12, padding: 14 },
+  fixedDateText: { fontSize: 15, color: '#0369A1', fontWeight: '600' },
+  fixedDateSub: { fontSize: 12, color: '#0369A1', marginTop: 4, opacity: 0.8 },
   dateSelectorLoading: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
   dateSelectorLoadingText: { fontSize: 14, color: '#888' },
   dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#E07B39', borderRadius: 12, padding: 14, backgroundColor: '#fff' },
   dateSelectorText: { fontSize: 15, color: '#333' },
   dateSelectorPlaceholder: { color: '#aaa' },
   dateSelectorArrow: { fontSize: 12, color: '#E07B39' },
+  validationHint: { marginTop: 12, fontSize: 13, color: '#E07B39', textAlign: 'center' },
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopWidth: 0.5, borderTopColor: '#E8E8E4', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   footerPrice: { flex: 1 },
   footerPriceLabel: { fontSize: 12, color: '#888' },
   footerPriceValue: { fontSize: 20, fontWeight: '700', color: '#1A1A1A' },
   addBtn: { backgroundColor: '#E07B39', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12 },
   addBtnSuccess: { backgroundColor: '#2E7D32' },
+  addBtnDisabled: { backgroundColor: '#ccc' },
   addBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '70%' },
@@ -276,8 +464,7 @@ const styles = StyleSheet.create({
   dateOptionSelected: {},
   dateOptionText: { fontSize: 15, color: '#333', fontWeight: '500' },
   dateOptionTextSelected: { color: '#E07B39', fontWeight: '600' },
-  dateOptionSub: { fontSize: 12, color: '#888', marginTop: 2 },
-  checkmark: { color: '#E07B39', fontSize: 16, fontWeight: '700' },
+  checkmarkDate: { color: '#E07B39', fontSize: 16, fontWeight: '700' },
   modalClose: { marginTop: 20, alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E0D8D0' },
   modalCloseText: { fontSize: 15, color: '#666', fontWeight: '500' },
 });

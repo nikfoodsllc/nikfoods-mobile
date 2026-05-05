@@ -73,3 +73,4 @@ export const cartStore = {
     listeners.forEach(l => l());
   },
 };
+export default cartStore;

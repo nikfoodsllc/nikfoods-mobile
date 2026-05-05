@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { itemCache } from '../itemCache';
 
 const API_BASE = 'https://www.nikfoods.com/api';
 
@@ -24,6 +25,11 @@ type FoodItem = {
   hasSpiceLevel: boolean;
   spiceLevel: string[];
   hasCombo: boolean;
+  isEcoFriendlyContainer: boolean;
+  ecoContainerCharge: number;
+  sections: any[];
+  itemType: string;
+  fixedDeliveryDate?: string;
 };
 
 export default function MenuScreen() {
@@ -61,18 +67,25 @@ export default function MenuScreen() {
         if (cat.listingType === 'flat') {
           setItems(data.data.foodItems || []);
         } else {
-          const dayWise = data.data.dayWiseItems || {};
-          const allItems = Object.entries(dayWise).flatMap(([date, dateItems]) =>
-            (dateItems as FoodItem[]).map((item, idx) => ({
+          const dayWise: Record<string, FoodItem[]> = data.data.dayWiseItems || {};
+          const sortedDates = Object.keys(dayWise).sort((a, b) =>
+            new Date(a).getTime() - new Date(b).getTime()
+          );
+          const allItems: FoodItem[] = sortedDates.flatMap((date) => {
+            const dateItems = dayWise[date];
+            if (!Array.isArray(dateItems)) return [];
+            return dateItems.map((item: FoodItem, idx: number) => ({
               ...item,
               _id: `${item._id}-${date}-${idx}`,
-            }))
-          );
+              fixedDeliveryDate: date,
+            }));
+          });
           setItems(allItems);
         }
         setItemsLoading(false);
       })
-      .catch(() => {
+      .catch((e) => {
+        console.log('Load error:', e);
         setError('Could not load items.');
         setItemsLoading(false);
       });
@@ -119,7 +132,12 @@ export default function MenuScreen() {
         </View>
       </TouchableOpacity>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catBar} contentContainerStyle={styles.catBarContent}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.catBar}
+        contentContainerStyle={styles.catBarContent}
+      >
         {categories.map(cat => (
           <TouchableOpacity
             key={cat._id}
@@ -143,47 +161,78 @@ export default function MenuScreen() {
         data={displayedItems}
         keyExtractor={(item, index) => `${item._id}-${index}`}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {item.url ? (
-              <Image source={{ uri: item.url }} style={styles.image} />
-            ) : (
-              <View style={[styles.image, styles.imagePlaceholder]} />
-            )}
-            <View style={styles.info}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name}>{item.name}</Text>
-                <View style={[styles.vegDot, { backgroundColor: item.veg ? '#2E7D32' : '#C62828' }]} />
-              </View>
-              <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
-              <View style={styles.priceRow}>
-                <Text style={styles.price}>{getDisplayPrice(item)}</Text>
-                <TouchableOpacity
-                  style={styles.addBtn}
-                  onPress={() => router.push({
-                    pathname: '/(tabs)/item',
-                    params: {
-                      id: item._id,
-                      name: item.name,
-                      description: item.description,
-                      price: String(item.price),
-                      url: item.url,
-                      veg: String(item.veg),
-                      categoryId: selectedCategory?._id,
-                      listingType: selectedCategory?.listingType,
-                      portions: JSON.stringify(item.portions || []),
-                      portionPrices: JSON.stringify(item.portionPrices || []),
-                      hasSpiceLevel: String(item.hasSpiceLevel || false),
-                      spiceLevel: JSON.stringify(item.spiceLevel || []),
-                      hasCombo: String(item.hasCombo || false),
-                    }
-                  })}>
-                  <Text style={styles.addBtnText}>Add</Text>
-                </TouchableOpacity>
+        renderItem={({ item, index }) => {
+          const showDateHeader = !!item.fixedDeliveryDate &&
+            (index === 0 || displayedItems[index - 1]?.fixedDeliveryDate !== item.fixedDeliveryDate);
+          const dateLabel = item.fixedDeliveryDate
+  ? (() => {
+      const [year, month, day] = item.fixedDeliveryDate!.split('-').map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric'
+      });
+    })()
+  : null;
+
+          return (
+            <View>
+              {showDateHeader && dateLabel && (
+                <View style={styles.dayHeader}>
+                  <Text style={styles.dayHeaderText}>{'📅 ' + dateLabel}</Text>
+                </View>
+              )}
+              <View style={styles.card}>
+                {item.url ? (
+                  <Image source={{ uri: item.url }} style={styles.image} />
+                ) : (
+                  <View style={[styles.image, styles.imagePlaceholder]} />
+                )}
+                <View style={styles.info}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.name}>{item.name}</Text>
+                    <View style={[styles.vegDot, { backgroundColor: item.veg ? '#2E7D32' : '#C62828' }]} />
+                  </View>
+                  <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.price}>{getDisplayPrice(item)}</Text>
+                    <TouchableOpacity
+                      style={styles.addBtn}
+                      onPress={() => {
+                        itemCache.set(item._id, {
+                          portions: item.portions || [],
+                          portionPrices: item.portionPrices || [],
+                          hasSpiceLevel: item.hasSpiceLevel || false,
+                          spiceLevel: item.spiceLevel || [],
+                          hasCombo: item.hasCombo || false,
+                          isEcoFriendlyContainer: item.isEcoFriendlyContainer || false,
+                          ecoContainerCharge: item.ecoContainerCharge || 0,
+                          sections: item.sections || [],
+                          itemType: item.itemType || 'simple',
+                          fixedDeliveryDate: item.fixedDeliveryDate || null,
+                        });
+                        router.push({
+                          pathname: '/(tabs)/item',
+                          params: {
+                            id: item._id,
+                            name: item.name,
+                            description: item.description,
+                            price: String(item.price),
+                            url: item.url,
+                            veg: String(item.veg),
+                            categoryId: selectedCategory?._id,
+                            listingType: selectedCategory?.listingType,
+                            fixedDeliveryDate: item.fixedDeliveryDate || '',
+                          }
+                        });
+                      }}
+                    >
+                      <Text style={styles.addBtnText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
-        )}
+          );
+        }}
       />
     </View>
   );
@@ -209,6 +258,8 @@ const styles = StyleSheet.create({
   catChipTextActive: { fontSize: 13, fontWeight: '500', color: '#ffffff' },
   loadingOverlay: { position: 'absolute', top: 200, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   list: { padding: 16, gap: 12 },
+  dayHeader: { backgroundColor: '#FFF3E8', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginBottom: 4, marginTop: 8 },
+  dayHeaderText: { fontSize: 14, fontWeight: '700', color: '#E07B39' },
   card: { backgroundColor: '#fff', borderRadius: 12, flexDirection: 'row', overflow: 'hidden', borderWidth: 0.5, borderColor: '#E8E8E4' },
   image: { width: 110, height: 110 },
   imagePlaceholder: { backgroundColor: '#F0EDE8' },
