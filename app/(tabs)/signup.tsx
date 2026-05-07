@@ -114,7 +114,7 @@ export default function SignupScreen() {
         return;
       }
       await authStore.login(data.data.user, data.data.token, data.data.refreshToken);
-      router.replace('/(tabs)');
+router.replace('/(tabs)/serviceability');
     } catch (e) {
       showError('Something went wrong. Please try again.');
       setLoading(false);
