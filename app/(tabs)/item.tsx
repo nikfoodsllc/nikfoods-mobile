@@ -90,7 +90,8 @@ export default function ItemScreen() {
 
   useEffect(() => {
     if (isDayWise && fixedDeliveryDate) {
-      const formatted = new Date(fixedDeliveryDate).toLocaleDateString('en-US', {
+      const [year, month, day] = fixedDeliveryDate.split('-').map(Number);
+      const formatted = new Date(year, month - 1, day).toLocaleDateString('en-US', {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
       });
       setSelectedDate({
@@ -201,7 +202,6 @@ export default function ItemScreen() {
           <Text style={styles.price}>{'$' + itemPrice.toFixed(2)}</Text>
           <Text style={styles.description}>{description}</Text>
 
-          {/* Portion Selector */}
           {hasPortions && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Select Your Portion</Text>
@@ -221,7 +221,6 @@ export default function ItemScreen() {
             </View>
           )}
 
-          {/* Spice Level Selector */}
           {hasSpiceLevel && spiceLevels.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
@@ -244,15 +243,11 @@ export default function ItemScreen() {
             </View>
           )}
 
-          {/* Combo Sections */}
           {hasCombo && sections.map(section => (
             <View key={section._id} style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                <Text style={[
-                  styles.requiredGreen,
-                  !sectionSelections[section._id] && styles.requiredOrange
-                ]}>
+                <Text style={[styles.requiredGreen, !sectionSelections[section._id] && styles.requiredOrange]}>
                   {section.isRequired ? 'Required' : 'Optional'}
                 </Text>
               </View>
@@ -283,13 +278,9 @@ export default function ItemScreen() {
             </View>
           ))}
 
-          {/* Eco Container */}
           {isEco && ecoCharge > 0 && (
             <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.ecoRow}
-                onPress={() => setEcoContainer(!ecoContainer)}
-              >
+              <TouchableOpacity style={styles.ecoRow} onPress={() => setEcoContainer(!ecoContainer)}>
                 <View style={[styles.checkbox, ecoContainer && styles.checkboxChecked]}>
                   {ecoContainer && <Text style={styles.checkmark}>{'✓'}</Text>}
                 </View>
@@ -302,7 +293,6 @@ export default function ItemScreen() {
             </View>
           )}
 
-          {/* Date Section */}
           {isDayWise ? (
             <View style={styles.dateSection}>
               <Text style={styles.dateLabel}>{'Delivery date'}</Text>
@@ -333,9 +323,7 @@ export default function ItemScreen() {
           )}
 
           {hasCombo && !allRequiredSectionsSelected && (
-            <Text style={styles.validationHint}>
-              {'Please make selections for all required sections above'}
-            </Text>
+            <Text style={styles.validationHint}>{'Please make selections for all required sections above'}</Text>
           )}
         </View>
       </ScrollView>
