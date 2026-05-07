@@ -30,7 +30,25 @@ export default function LoginScreen() {
         return;
       }
       await authStore.login(data.data.user, data.data.token, data.data.refreshToken);
-      router.replace('/(tabs)');
+
+try {
+  const addrRes = await fetch(`${API_BASE}/address`, {
+    headers: { Authorization: `Bearer ${data.data.token}` },
+  });
+  const addrData = await addrRes.json();
+  const addresses = addrData.data?.items || [];
+  const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0];
+
+  if (defaultAddr?.postal_code) {
+    const { checkZipcode } = await import('../zipcodeStore');
+    await checkZipcode(defaultAddr.postal_code);
+    router.replace('/(tabs)');
+  } else {
+    router.replace('/(tabs)/serviceability');
+  }
+} catch (e) {
+  router.replace('/(tabs)');
+}
     } catch (e) {
       setError('Something went wrong. Please try again.');
       setLoading(false);
