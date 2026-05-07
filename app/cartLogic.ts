@@ -150,3 +150,4 @@ export function calculateTotalPrice(subtotal: number, deliveryFee: number = 0, d
     total: Number(total.toFixed(2)),
   };
 }
+export default calculateCartClubbing;

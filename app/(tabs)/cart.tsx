@@ -51,7 +51,6 @@ export default function CartScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Min order info banner */}
       {zipcode && (
         <View style={styles.minOrderBanner}>
           <Text style={styles.minOrderBannerText}>
@@ -71,50 +70,35 @@ export default function CartScreen() {
 
           return (
             <View style={styles.dateGroup}>
-              {/* Date header with status indicator */}
               <View style={[
                 styles.dateHeader,
                 meetsMin && styles.dateHeaderGreen,
-                hasWarning && styles.dateHeaderAmber,
-                hasError && styles.dateHeaderRed,
+                (hasWarning || hasError) && styles.dateHeaderAmber,
               ]}>
-                <View style={styles.dateHeaderLeft}>
-                  <Text style={[
-                    styles.dateHeaderText,
-                    meetsMin && styles.dateHeaderTextGreen,
-                    hasWarning && styles.dateHeaderTextAmber,
-                    hasError && styles.dateHeaderTextRed,
-                  ]}>
-                    {meetsMin ? '✅' : hasWarning ? '⚠️' : '❌'} {'Delivery: ' + day.dateFormatted}
-                  </Text>
-                  <Text style={[
-                    styles.daySubtotal,
-                    meetsMin && styles.daySubtotalGreen,
-                    (hasWarning || hasError) && styles.daySubtotalAmber,
-                  ]}>
-                    {'$' + day.dayTotal.toFixed(2) + ' / $' + effectiveMin.toFixed(2) + ' min'}
-                  </Text>
-                </View>
+                <Text style={[
+                  styles.dateHeaderText,
+                  meetsMin && styles.dateHeaderTextGreen,
+                  (hasWarning || hasError) && styles.dateHeaderTextAmber,
+                ]}>
+                  {meetsMin ? '✅' : '⚠️'} {'Delivery: ' + day.dateFormatted}
+                </Text>
+                <Text style={[
+                  styles.daySubtotal,
+                  meetsMin && styles.daySubtotalGreen,
+                  (hasWarning || hasError) && styles.daySubtotalAmber,
+                ]}>
+                  {'$' + day.dayTotal.toFixed(2) + ' / $' + effectiveMin.toFixed(2) + ' min'}
+                </Text>
               </View>
 
-              {/* Warning/error message */}
-              {day.deliveryMessage && (
-                <View style={[
-                  styles.messageBox,
-                  hasWarning && styles.messageBoxAmber,
-                  hasError && styles.messageBoxRed,
-                ]}>
-                  <Text style={[
-                    styles.messageText,
-                    hasWarning && styles.messageTextAmber,
-                    hasError && styles.messageTextRed,
-                  ]}>
-                    {day.deliveryMessage.message}
+              {(hasWarning || hasError) && day.deliveryMessage && (
+                <View style={styles.messageBoxSoft}>
+                  <Text style={styles.messageTextSoft}>
+                    {'💡 ' + day.deliveryMessage.message}
                   </Text>
                 </View>
               )}
 
-              {/* Items */}
               {day.items.map((item, index) => (
                 <View
                   key={`${item.id}-${item.deliveryDate}-${item.selectedPortion ?? 'default'}-${item.spiceLevel ?? 'none'}-${index}`}
@@ -184,12 +168,13 @@ export default function CartScreen() {
         )}
       </View>
 
-      {/* Cannot checkout message */}
-      {!clubbingResult.canCheckout && clubbingResult.checkoutBlockMessage ? (
-        <View style={styles.blockBanner}>
-          <Text style={styles.blockBannerText}>{clubbingResult.checkoutBlockMessage}</Text>
+      {!clubbingResult.canCheckout && (
+        <View style={styles.blockBannerSoft}>
+          <Text style={styles.blockBannerTextSoft}>
+            {'Add a bit more to unlock delivery 🛒'}
+          </Text>
         </View>
-      ) : null}
+      )}
     </View>
   );
 }
@@ -212,21 +197,14 @@ const styles = StyleSheet.create({
   dateHeader: { backgroundColor: '#FFF3E8', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
   dateHeaderGreen: { backgroundColor: '#E8F5E9' },
   dateHeaderAmber: { backgroundColor: '#FFF8E1' },
-  dateHeaderRed: { backgroundColor: '#FFEBEE' },
-  dateHeaderLeft: { gap: 2 },
   dateHeaderText: { fontSize: 13, fontWeight: '600', color: '#E07B39' },
   dateHeaderTextGreen: { color: '#2E7D32' },
   dateHeaderTextAmber: { color: '#F57F17' },
-  dateHeaderTextRed: { color: '#C62828' },
   daySubtotal: { fontSize: 12, color: '#888', marginTop: 2 },
   daySubtotalGreen: { color: '#2E7D32' },
   daySubtotalAmber: { color: '#F57F17' },
-  messageBox: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, borderWidth: 1 },
-  messageBoxAmber: { backgroundColor: '#FFFDE7', borderColor: '#FFD54F' },
-  messageBoxRed: { backgroundColor: '#FFEBEE', borderColor: '#EF9A9A' },
-  messageText: { fontSize: 13, lineHeight: 18 },
-  messageTextAmber: { color: '#E65100' },
-  messageTextRed: { color: '#C62828' },
+  messageBoxSoft: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#FFFDE7', borderWidth: 1, borderColor: '#FFE082' },
+  messageTextSoft: { fontSize: 12, color: '#795548', lineHeight: 18 },
   card: { backgroundColor: '#fff', borderRadius: 12, flexDirection: 'row', overflow: 'hidden', borderWidth: 0.5, borderColor: '#E8E8E4' },
   image: { width: 90, height: 90 },
   imagePlaceholder: { backgroundColor: '#F0EDE8' },
@@ -246,6 +224,6 @@ const styles = StyleSheet.create({
   checkoutBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   checkoutBtnDisabled: { backgroundColor: '#F5F0EB', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E0D8D0' },
   checkoutBtnDisabledText: { color: '#888', fontSize: 14, fontWeight: '600' },
-  blockBanner: { position: 'absolute', bottom: 80, left: 16, right: 16, backgroundColor: '#FFEBEE', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#EF9A9A' },
-  blockBannerText: { fontSize: 13, color: '#C62828', textAlign: 'center', fontWeight: '500' },
+  blockBannerSoft: { position: 'absolute', bottom: 80, left: 16, right: 16, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#FFE082' },
+  blockBannerTextSoft: { fontSize: 13, color: '#795548', textAlign: 'center', fontWeight: '500' },
 });
