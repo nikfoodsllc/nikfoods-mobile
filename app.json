@@ -1,26 +1,34 @@
 {
   "expo": {
-    "name": "nikfoods-mobile",
+    "name": "NikFoods",
     "slug": "nikfoods-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "nikfoodsmobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#E07B39"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.nikfoods.mobile"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nikfoods.mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We use your location to find nearby delivery addresses.",
+        "NSCameraUsageDescription": "We use your camera for profile photos.",
+        "NSPhotoLibraryUsageDescription": "We use your photo library for profile photos.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#E07B39"
+      },
+      "package": "com.nikfoods.mobile"
     },
     "web": {
       "bundler": "metro",
@@ -40,6 +48,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a5abe212-9889-4412-97d1-9b587c95261d"
+      }
     }
   }
 }
