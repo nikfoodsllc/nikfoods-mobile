@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { authStore } from '../authStore';
+import { calculateCartClubbing } from '../cartLogic';
 import { cartStore } from '../cartStore';
+import { zipcodeStore } from '../zipcodeStore';
 
 const STRIPE_KEY = 'pk_live_51HdWaqKA6kkBLygB9g6lJ8QBu5pTCeXfno0x3b7rPV2KFLIf9RziEMPoUd7K3uZyXOEkPxJjMLzCZ2PTO3w2UBqm00kjva9C6K';
 const API_BASE = 'https://www.nikfoods.com/api';
@@ -43,64 +45,50 @@ function CheckoutForm() {
   const [saveToProfile, setSaveToProfile] = useState(true);
 
   const user = authStore.getUser();
+  const effectiveMin = zipcodeStore.getMinOrderValue() || 25;
+  const clubbingResult = calculateCartClubbing(items, effectiveMin);
 
   useEffect(() => {
-  setError('');
-  const unsubscribe = cartStore.subscribe(() => {
-    setItems([...cartStore.getItems()]);
-    setTotal(cartStore.getTotal());
-  });
-  return unsubscribe;
-}, []);
+    setError('');
+    const unsubscribe = cartStore.subscribe(() => {
+      setItems([...cartStore.getItems()]);
+      setTotal(cartStore.getTotal());
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
-  const load = async () => {
-    await authStore.loadFromStorage();
-    const t = authStore.getToken();
-    if (t) {
-      await fetchAddresses();
-    } else {
+    const load = async () => {
+      await authStore.loadFromStorage();
+      const t = authStore.getToken();
+      if (t) await fetchAddresses();
+      else setLoadingAddresses(false);
+    };
+    load();
+  }, []);
+
+  const fetchAddresses = async () => {
+    try {
+      const currentToken = authStore.getToken();
+      if (!currentToken) { setLoadingAddresses(false); return; }
+      const response = await fetch(`${API_BASE}/address`, {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        const addrs = data.data.items || [];
+        if (addrs.length > 0) {
+          setAddresses([...addrs]);
+          const defaultAddr = addrs.find((a: Address) => a.isDefault) || addrs[0];
+          setSelectedAddress({ ...defaultAddr });
+        }
+      }
+    } catch (e) {
+      console.log('Failed to fetch addresses');
+    } finally {
       setLoadingAddresses(false);
     }
   };
-  load();
-}, []);
-
-const fetchAddresses = async () => {
-  try {
-    const currentToken = authStore.getToken();    
-    if (!currentToken) {
-      console.log('No token available');
-      setLoadingAddresses(false);
-      return;
-    }
-
-    const response = await fetch(`${API_BASE}/address`, {
-      headers: { Authorization: `Bearer ${currentToken}` },
-    });
-    
-    const data = await response.json();    
-   if (data.success) {
-  const addrs = data.data.items || [];
-  if (addrs.length > 0) {
-    setAddresses([...addrs]);
-    const defaultAddr = addrs.find((a: Address) => a.isDefault) || addrs[0];
-    setSelectedAddress({...defaultAddr});
-  }
-}
-  } catch (e) {
-    console.log('Address fetch error:', e);
-  } finally {
-    setLoadingAddresses(false);
-  }
-};
-
-  const groupedByDate = items.reduce((groups: Record<string, typeof items>, item) => {
-    const date = item.deliveryDateFormatted;
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(item);
-    return groups;
-  }, {});
 
   const getDeliveryAddress = () => {
     if (selectedAddress) {
@@ -116,20 +104,11 @@ const fetchAddresses = async () => {
 
   const handlePlaceOrder = async () => {
     setError('');
-
     if (!selectedAddress) {
-      if (!newStreet.trim()) {
-        setError('Please search and select a delivery address');
-        return;
-      }
-      if (!newCity.trim() || !newZip.trim()) {
-        setError('Please select a valid address with city and zip code');
-        return;
-      }
+      if (!newStreet.trim()) { setError('Please search and select a delivery address'); return; }
+      if (!newCity.trim() || !newZip.trim()) { setError('Please select a valid address with city and zip code'); return; }
     }
-
     setLoading(true);
-
     try {
       if (!selectedAddress && newStreet && saveToProfile) {
         await fetch(`${API_BASE}/address`, {
@@ -147,6 +126,7 @@ const fetchAddresses = async () => {
           }),
         });
       }
+
       const response = await fetch(`${API_BASE}/mobile-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,10 +147,10 @@ const fetchAddresses = async () => {
       const data = await response.json();
 
       if (!data.clientSecret) {
-  setError('Could not connect to payment system. Please try again.');
-  setLoading(false);
-  return;
-}
+        setError('Could not connect to payment system. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: data.clientSecret,
@@ -184,11 +164,7 @@ const fetchAddresses = async () => {
         style: 'automatic',
       });
 
-      if (initError) {
-        setError(initError.message);
-        setLoading(false);
-        return;
-      }
+      if (initError) { setError(initError.message); setLoading(false); return; }
 
       const { error: paymentError } = await presentPaymentSheet();
 
@@ -200,10 +176,10 @@ const fetchAddresses = async () => {
 
       cartStore.clear();
       router.replace('/(tabs)/confirmation');
-    } catch (e: any) {
-  setError('Something went wrong. Please try again.');
-  setLoading(false);
-}
+    } catch (e) {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
   };
 
   if (!user) {
@@ -244,25 +220,38 @@ const fetchAddresses = async () => {
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
+        {/* Order Summary */}
         <Text style={styles.sectionTitle}>Order summary</Text>
-        {Object.entries(groupedByDate).map(([date, dateItems]) => (
-          <View key={date} style={styles.summaryGroup}>
-            <View style={styles.summaryDateHeader}>
-              <Text style={styles.summaryDateText}>{'Delivery: ' + date}</Text>
-            </View>
-            {dateItems.map(item => (
-              <View key={item.id + item.deliveryDate} style={styles.summaryRow}>
-                <Text style={styles.summaryName}>{item.quantity + 'x ' + item.name}</Text>
-                <Text style={styles.summaryPrice}>{'$' + (item.price * item.quantity).toFixed(2)}</Text>
+        {clubbingResult.dayAnalysis.map((day) => {
+          const dayItems = items.filter(item => item.deliveryDate === day.date);
+          const isClubbed = !!day.deliveryMessage?.deliveryDate &&
+            day.deliveryMessage.deliveryDate !== day.dateFormatted;
+          const deliveryDate = isClubbed
+            ? day.deliveryMessage!.deliveryDate!
+            : day.dateFormatted;
+
+          return (
+            <View key={day.date} style={styles.summaryGroup}>
+              <View style={styles.summaryDateHeader}>
+                <Text style={styles.summaryDateText}>{'📋 Menu: ' + day.dateFormatted}</Text>
+                <Text style={styles.summaryDeliveryDate}>{'🚚 Delivers: ' + deliveryDate}</Text>
               </View>
-            ))}
-          </View>
-        ))}
+              {dayItems.map(item => (
+                <View key={item.id + item.deliveryDate} style={styles.summaryRow}>
+                  <Text style={styles.summaryName}>{item.quantity + 'x ' + item.name}</Text>
+                  <Text style={styles.summaryPrice}>{'$' + (item.price * item.quantity).toFixed(2)}</Text>
+                </View>
+              ))}
+            </View>
+          );
+        })}
+
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>{'$' + total.toFixed(2)}</Text>
         </View>
 
+        {/* Your Details */}
         <Text style={styles.sectionTitle}>Your details</Text>
         <View style={styles.detailsCard}>
           <View style={styles.detailRow}>
@@ -281,6 +270,7 @@ const fetchAddresses = async () => {
           </View>
         </View>
 
+        {/* Delivery Address */}
         <Text style={styles.sectionTitle}>Delivery address</Text>
 
         {addresses.length > 0 ? (
@@ -301,10 +291,7 @@ const fetchAddresses = async () => {
                   )}
                 </View>
                 {addresses.length > 1 && (
-                  <TouchableOpacity
-                    style={styles.changeAddressBtn}
-                    onPress={() => setShowAddressPicker(true)}
-                  >
+                  <TouchableOpacity style={styles.changeAddressBtn} onPress={() => setShowAddressPicker(true)}>
                     <Text style={styles.changeAddressBtnText}>Change</Text>
                   </TouchableOpacity>
                 )}
@@ -314,19 +301,12 @@ const fetchAddresses = async () => {
         ) : (
           <View>
             <View style={styles.noAddressNote}>
-              <Text style={styles.noAddressNoteText}>
-                {'No saved address found. Please enter your delivery address below.'}
-              </Text>
+              <Text style={styles.noAddressNoteText}>No saved address found. Please enter your delivery address below.</Text>
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>
-                Street address <Text style={styles.required}>*</Text>
-              </Text>
-              <TouchableOpacity
-                style={[styles.input, { justifyContent: 'center' }]}
-                onPress={() => setShowAddressSearch(true)}
-              >
+              <Text style={styles.fieldLabel}>Street address <Text style={styles.required}>*</Text></Text>
+              <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowAddressSearch(true)}>
                 <Text style={{ color: newStreet ? '#1A1A1A' : '#aaa', fontSize: 15 }}>
                   {newStreet || 'Search your address...'}
                 </Text>
@@ -335,37 +315,25 @@ const fetchAddresses = async () => {
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Apartment / Unit (optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Apt 4B"
-                value={newApartment}
-                onChangeText={setNewApartment}
-              />
+              <TextInput style={styles.input} placeholder="e.g. Apt 4B" value={newApartment} onChangeText={setNewApartment} />
             </View>
 
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>City</Text>
                 <View style={[styles.input, styles.readonlyInput]}>
-                  <Text style={{ fontSize: 15, color: newCity ? '#1A1A1A' : '#aaa' }}>
-                    {newCity || 'Auto-filled'}
-                  </Text>
+                  <Text style={{ fontSize: 15, color: newCity ? '#1A1A1A' : '#aaa' }}>{newCity || 'Auto-filled'}</Text>
                 </View>
               </View>
               <View style={[styles.field, { width: 120 }]}>
                 <Text style={styles.fieldLabel}>Zip code</Text>
                 <View style={[styles.input, styles.readonlyInput]}>
-                  <Text style={{ fontSize: 15, color: newZip ? '#1A1A1A' : '#aaa' }}>
-                    {newZip || 'Auto-filled'}
-                  </Text>
+                  <Text style={{ fontSize: 15, color: newZip ? '#1A1A1A' : '#aaa' }}>{newZip || 'Auto-filled'}</Text>
                 </View>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.saveAddressRow}
-              onPress={() => setSaveToProfile(!saveToProfile)}
-            >
+            <TouchableOpacity style={styles.saveAddressRow} onPress={() => setSaveToProfile(!saveToProfile)}>
               <View style={[styles.checkbox, saveToProfile && styles.checkboxChecked]}>
                 {saveToProfile && <Text style={styles.checkmark}>{'✓'}</Text>}
               </View>
@@ -374,6 +342,7 @@ const fetchAddresses = async () => {
           </View>
         )}
 
+        {/* Special Instructions */}
         <Text style={styles.sectionTitle}>Special instructions (optional)</Text>
         <TextInput
           style={[styles.input, styles.inputMulti]}
@@ -404,11 +373,10 @@ const fetchAddresses = async () => {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.disclaimer}>
-          {'Payment is processed securely by Stripe. Apple Pay is supported.'}
-        </Text>
+        <Text style={styles.disclaimer}>Payment is processed securely by Stripe. Apple Pay is supported.</Text>
       </ScrollView>
 
+      {/* Address Picker Modal */}
       <Modal visible={showAddressPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -421,9 +389,7 @@ const fetchAddresses = async () => {
               >
                 <View style={styles.addressOptionContent}>
                   <Text style={styles.addressOptionName}>{addr.name}</Text>
-                  <Text style={styles.addressOptionLine}>
-                    {addr.street_address}{addr.apartment ? ', ' + addr.apartment : ''}
-                  </Text>
+                  <Text style={styles.addressOptionLine}>{addr.street_address}{addr.apartment ? ', ' + addr.apartment : ''}</Text>
                   <Text style={styles.addressOptionLine}>{addr.city + ', ' + addr.postal_code}</Text>
                 </View>
                 <View style={styles.addressOptionRight}>
@@ -445,6 +411,7 @@ const fetchAddresses = async () => {
         </View>
       </Modal>
 
+      {/* Google Places Address Search Modal */}
       <Modal visible={showAddressSearch} animationType="slide">
         <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: 60 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 }}>
@@ -473,10 +440,7 @@ const fetchAddresses = async () => {
             keyboardShouldPersistTaps="always"
             styles={{
               container: { flex: 1, paddingHorizontal: 16 },
-              textInput: {
-                backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#E0D8D0',
-                borderRadius: 10, padding: 12, fontSize: 15, color: '#1A1A1A', height: 48,
-              },
+              textInput: { backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#E0D8D0', borderRadius: 10, padding: 12, fontSize: 15, color: '#1A1A1A', height: 48 },
               listView: { backgroundColor: '#fff' },
               row: { padding: 14, backgroundColor: '#fff' },
               description: { fontSize: 15, color: '#333' },
@@ -513,8 +477,9 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 60 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginTop: 24, marginBottom: 12 },
   summaryGroup: { marginBottom: 12 },
-  summaryDateHeader: { backgroundColor: '#FFF3E8', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginBottom: 8 },
+  summaryDateHeader: { backgroundColor: '#FFF3E8', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginBottom: 8 },
   summaryDateText: { fontSize: 13, fontWeight: '600', color: '#E07B39' },
+  summaryDeliveryDate: { fontSize: 12, color: '#2E7D32', fontWeight: '500', marginTop: 2 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   summaryName: { fontSize: 14, color: '#333', flex: 1 },
   summaryPrice: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
@@ -557,7 +522,7 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '70%' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 20 },
   addressOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#F0EDE8' },
-  addressOptionSelected: { },
+  addressOptionSelected: {},
   addressOptionContent: { flex: 1 },
   addressOptionRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addressOptionName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },

@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../authStore';
+import { checkZipcode } from '../zipcodeStore';
 
 const API_BASE = 'https://www.nikfoods.com/api';
 
@@ -31,24 +32,23 @@ export default function LoginScreen() {
       }
       await authStore.login(data.data.user, data.data.token, data.data.refreshToken);
 
-try {
-  const addrRes = await fetch(`${API_BASE}/address`, {
-    headers: { Authorization: `Bearer ${data.data.token}` },
-  });
-  const addrData = await addrRes.json();
-  const addresses = addrData.data?.items || [];
-  const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0];
+      try {
+        const addrRes = await fetch(`${API_BASE}/address`, {
+          headers: { Authorization: `Bearer ${data.data.token}` },
+        });
+        const addrData = await addrRes.json();
+        const addresses = addrData.data?.items || [];
+        const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0];
 
-  if (defaultAddr?.postal_code) {
-    const { checkZipcode } = await import('../zipcodeStore');
-    await checkZipcode(defaultAddr.postal_code);
-    router.replace('/(tabs)');
-  } else {
-    router.replace('/(tabs)/serviceability');
-  }
-} catch (e) {
-  router.replace('/(tabs)');
-}
+        if (defaultAddr?.postal_code) {
+          await checkZipcode(defaultAddr.postal_code);
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/(tabs)/serviceability');
+        }
+      } catch (e) {
+        router.replace('/(tabs)');
+      }
     } catch (e) {
       setError('Something went wrong. Please try again.');
       setLoading(false);
@@ -58,9 +58,9 @@ try {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.logoSection}>
-  <Image source={require('../../assets/images/nikfoods-logo.png')} style={styles.logoImage} resizeMode="contain" />
-  <Text style={styles.tagline}>Authentic Indian food</Text>
-</View>
+        <Image source={require('../../assets/images/nikfoods-logo.png')} style={styles.logoImage} resizeMode="contain" />
+        <Text style={styles.tagline}>Authentic Indian food</Text>
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.title}>Welcome back</Text>
@@ -70,13 +70,28 @@ try {
 
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} placeholder="Enter your email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
         </View>
 
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.passwordRow}>
-            <TextInput style={[styles.input, styles.passwordInput]} placeholder="Enter your password" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoCapitalize="none" />
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+            />
             <TouchableOpacity style={styles.showBtn} onPress={() => setShowPassword(!showPassword)}>
               <Text style={styles.showBtnText}>{showPassword ? 'Hide' : 'Show'}</Text>
             </TouchableOpacity>
@@ -87,18 +102,12 @@ try {
           <Text style={styles.forgotText}>Forgot password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.loginBtn, loading && styles.loginBtnDisabled]} onPress={handleLogin} disabled={loading}>
+        <TouchableOpacity
+          style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Sign in</Text>}
-        </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity style={styles.googleBtn}>
-          <Text style={styles.googleBtnText}>Continue with Google</Text>
         </TouchableOpacity>
       </View>
 
@@ -133,11 +142,6 @@ const styles = StyleSheet.create({
   loginBtn: { backgroundColor: '#E07B39', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 4 },
   loginBtnDisabled: { backgroundColor: '#ccc' },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
-  dividerLine: { flex: 1, height: 0.5, backgroundColor: '#E0D8D0' },
-  dividerText: { fontSize: 13, color: '#888' },
-  googleBtn: { borderWidth: 1, borderColor: '#E0D8D0', borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: '#fff' },
-  googleBtnText: { fontSize: 15, color: '#333', fontWeight: '500' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
   footerText: { fontSize: 14, color: '#888' },
   footerLink: { fontSize: 14, color: '#E07B39', fontWeight: '600' },
