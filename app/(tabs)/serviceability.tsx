@@ -17,8 +17,6 @@ export default function ServiceabilityScreen() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
 
-  const user = authStore.getUser();
-
   const handleCheckAndSave = async () => {
     if (!street.trim()) { setError('Please search and select your address'); return; }
     if (!zipcode.trim()) { setError('Zip code is required'); return; }
@@ -36,16 +34,21 @@ export default function ServiceabilityScreen() {
       }
 
       const token = authStore.getToken();
-      await fetch(`${API_BASE}/address`, {
+      const freshUser = authStore.getUser();
+      const userName = freshUser?.name && freshUser.name.trim().length >= 2
+        ? freshUser.name
+        : (freshUser?.email?.split('@')[0] || 'User');
+
+      const saveResponse = await fetch(`${API_BASE}/address`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: user?.name || '',
-          email: user?.email || '',
-          phone: user?.phone || '',
+          name: userName,
+          email: freshUser?.email || '',
+          phone: freshUser?.phone || '',
           street_address: street,
           apartment: apartment,
           city: city,
@@ -53,6 +56,13 @@ export default function ServiceabilityScreen() {
           isDefault: true,
         }),
       });
+      const saveData = await saveResponse.json();
+
+      if (!saveResponse.ok) {
+        setError(saveData.error || 'Failed to save address. Please try again.');
+        setChecking(false);
+        return;
+      }
 
       router.replace('/(tabs)');
     } catch (e) {
@@ -77,7 +87,7 @@ export default function ServiceabilityScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.welcomeText}>
-          {'Welcome, ' + (user?.name?.split(' ')[0] || 'there') + '! 👋'}
+          {'Welcome, ' + (authStore.getUser()?.name?.split(' ')[0] || 'there') + '! 👋'}
         </Text>
         <Text style={styles.welcomeSubtext}>
           Add your delivery address so we can confirm serviceability and show you the right menu.

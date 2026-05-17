@@ -47,15 +47,16 @@ export default function AddressesScreen() {
   const [showAddressSearch, setShowAddressSearch] = useState(false);
   const googleRef = useRef<any>(null);
 
-  const token = authStore.getToken();
   const user = authStore.getUser();
 
   useEffect(() => {
-    if (!token) { router.replace('/(tabs)/login'); return; }
+    if (!authStore.getToken()) { router.replace('/(tabs)/login'); return; }
     fetchAddresses();
   }, []);
 
   const fetchAddresses = async () => {
+    const token = authStore.getToken();
+    if (!token) { setLoading(false); return; }
     try {
       const response = await fetch(`${API_BASE}/address`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -97,6 +98,8 @@ export default function AddressesScreen() {
 
     setSaving(true);
     try {
+      const token = authStore.getToken();
+      if (!token) { setError('Not logged in'); setSaving(false); return; }
       const method = editingAddress ? 'PUT' : 'POST';
       const body = editingAddress ? { _id: editingAddress._id, ...form } : form;
       const response = await fetch(`${API_BASE}/address`, {
@@ -119,6 +122,8 @@ export default function AddressesScreen() {
 
   const handleDelete = async (addressId: string) => {
     try {
+      const token = authStore.getToken();
+      if (!token) return;
       const response = await fetch(`${API_BASE}/address?id=${addressId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
@@ -130,6 +135,8 @@ export default function AddressesScreen() {
   const handleSetDefault = async (address: Address) => {
     setSaving(true);
     try {
+      const token = authStore.getToken();
+      if (!token) return;
       await fetch(`${API_BASE}/address`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

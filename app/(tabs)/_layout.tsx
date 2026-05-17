@@ -57,6 +57,7 @@ export default function TabLayout() {
       <Tabs.Screen name="addresses" options={{ href: null }} />
 <Tabs.Screen name="orders" options={{ href: null }} />
 <Tabs.Screen name="serviceability" options={{ href: null }} />
+<Tabs.Screen name="forgot-password" options={{ href: null }} />
       <Tabs.Screen name="two" options={{ href: null }} />
     </Tabs>
   );

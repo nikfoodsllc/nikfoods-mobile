@@ -65,6 +65,25 @@ export default function ItemScreen() {
   const hasPortions = portions.length > 0 && portionPrices.length > 0;
   const isDayWise = listingType === 'day-wise' && !!fixedDeliveryDate;
 
+  // Derive date directly from params on every render — no useState/useEffect.
+  // This ensures correct date even when Expo Router reuses the screen instance.
+  const fixedDateOption: DateOption | null = isDayWise && fixedDeliveryDate
+    ? (() => {
+        const [year, month, day] = fixedDeliveryDate.split('-').map(Number);
+        const formatted = new Date(year, month - 1, day).toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+        });
+        return {
+          id: fixedDeliveryDate,
+          date: fixedDeliveryDate,
+          formattedDate: formatted,
+          fullDate: formatted,
+          isPast: false,
+          isPastCutoff: false,
+        };
+      })()
+    : null;
+
   const [availableDates, setAvailableDates] = useState<DateOption[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateOption | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -88,24 +107,15 @@ export default function ItemScreen() {
     return defaults;
   });
 
+  // For day-wise: always use fixedDateOption derived from params.
+  // For flat items: use the user-selected date from the picker.
+  const effectiveDate = isDayWise ? fixedDateOption : selectedDate;
+
   useEffect(() => {
-    if (isDayWise && fixedDeliveryDate) {
-      const [year, month, day] = fixedDeliveryDate.split('-').map(Number);
-      const formatted = new Date(year, month - 1, day).toLocaleDateString('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-      });
-      setSelectedDate({
-        id: fixedDeliveryDate,
-        date: fixedDeliveryDate,
-        formattedDate: formatted,
-        fullDate: formatted,
-        isPast: false,
-        isPastCutoff: false,
-      });
+    if (isDayWise) {
       setLoading(false);
       return;
     }
-
     fetch(`${API_BASE}/available-dates`)
       .then(r => r.json())
       .then(data => {
@@ -138,7 +148,7 @@ export default function ItemScreen() {
     .every(s => sectionSelections[s._id]);
 
   const handleAdd = () => {
-    if (!selectedDate) {
+    if (!effectiveDate) {
       setShowDatePicker(true);
       return;
     }
@@ -155,8 +165,8 @@ export default function ItemScreen() {
       price: itemPrice,
       url: url || '',
       veg: isVeg,
-      deliveryDate: selectedDate.date,
-      deliveryDateFormatted: selectedDate.fullDate || selectedDate.formattedDate,
+      deliveryDate: effectiveDate.date,
+      deliveryDateFormatted: effectiveDate.fullDate || effectiveDate.formattedDate,
       ...(hasPortions && { selectedPortion: portions[selectedPortionIndex] }),
       ...(hasSpiceLevel && selectedSpiceLevel && { spiceLevel: selectedSpiceLevel }),
     });
@@ -168,7 +178,7 @@ export default function ItemScreen() {
     setSectionSelections(prev => ({ ...prev, [sectionId]: portionId }));
   };
 
-  const canAddToCart = selectedDate &&
+  const canAddToCart = effectiveDate &&
     (!hasCombo || allRequiredSectionsSelected) &&
     (!hasSpiceLevel || spiceLevels.length === 0 || selectedSpiceLevel);
 
@@ -298,9 +308,9 @@ export default function ItemScreen() {
               <Text style={styles.dateLabel}>{'Delivery date'}</Text>
               <View style={styles.fixedDateBox}>
                 <Text style={styles.fixedDateText}>
-                  {'📅 ' + (selectedDate?.fullDate || fixedDeliveryDate)}
+                  {'📅 ' + (fixedDateOption?.fullDate || fixedDeliveryDate)}
                 </Text>
-                <Text style={styles.fixedDateSub}>This item is only available on this date</Text>
+                <Text style={styles.fixedDateSub}>Available to order on this date</Text>
               </View>
             </View>
           ) : (
@@ -338,7 +348,7 @@ export default function ItemScreen() {
           onPress={handleAdd}
         >
           <Text style={styles.addBtnText}>
-            {added ? '✓ Added!' : !selectedDate ? 'Select date first' : !canAddToCart ? 'Make selections' : 'Add to cart'}
+            {added ? '✓ Added!' : !effectiveDate ? 'Select date first' : !canAddToCart ? 'Make selections' : 'Add to cart'}
           </Text>
         </TouchableOpacity>
       </View>

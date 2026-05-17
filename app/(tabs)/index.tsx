@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { authStore } from '../authStore';
 import { itemCache } from '../itemCache';
 
 const API_BASE = 'https://www.nikfoods.com/api';
@@ -32,6 +33,17 @@ type FoodItem = {
   fixedDeliveryDate?: string;
 };
 
+type Address = {
+  _id: string;
+  street: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zipcode: string;
+  postal_code: string;
+  isDefault: boolean;
+};
+
 export default function MenuScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -40,8 +52,35 @@ export default function MenuScreen() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState('');
   const [vegOnly, setVegOnly] = useState(false);
+  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
+  const [addressLoading, setAddressLoading] = useState(false);
+
+  const fetchAddress = async () => {
+    const token = authStore.getToken();
+    if (!token) {
+      setAddressLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/address`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      const addresses: Address[] = data.data?.items || data.data?.addresses || [];
+      const def = addresses.find(a => a.isDefault) || addresses[0] || null;
+      setDefaultAddress(def);
+    } catch {
+      // silently fail
+    } finally {
+      setAddressLoading(false);
+    }
+  };
 
   useEffect(() => {
+    fetchAddress();
+    const unsubscribe = authStore.subscribe(() => {
+      fetchAddress();
+    });
     fetch(`${API_BASE}/categories`)
       .then(r => r.json())
       .then(data => {
@@ -54,7 +93,14 @@ export default function MenuScreen() {
         setError('Could not load menu. Check your connection.');
         setLoading(false);
       });
+    return unsubscribe;
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAddress();
+    }, [])
+  );
 
   const loadCategory = (cat: Category) => {
     setSelectedCategory(cat);
@@ -121,6 +167,32 @@ export default function MenuScreen() {
         <Text style={styles.headerSub}>Authentic Indian food</Text>
       </View>
 
+      {!addressLoading && (
+        defaultAddress ? (
+          <TouchableOpacity
+            style={styles.addressBanner}
+            onPress={() => router.push('/(tabs)/addresses')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addressBannerLabel}>📍 Delivering to</Text>
+            <Text style={styles.addressBannerText} numberOfLines={1}>
+              {(defaultAddress.street_address || defaultAddress.street)}, {defaultAddress.city}, {defaultAddress.postal_code || defaultAddress.zipcode}
+            </Text>
+            <Text style={styles.addressBannerChange}>Change →</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.addressBannerWarning}
+            onPress={() => router.push('/(tabs)/addresses')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addressBannerWarningText}>
+              📍 No delivery address on file — tap to add one
+            </Text>
+          </TouchableOpacity>
+        )
+      )}
+
       <TouchableOpacity
         style={styles.vegToggleRow}
         onPress={() => setVegOnly(!vegOnly)}
@@ -165,13 +237,13 @@ export default function MenuScreen() {
           const showDateHeader = !!item.fixedDeliveryDate &&
             (index === 0 || displayedItems[index - 1]?.fixedDeliveryDate !== item.fixedDeliveryDate);
           const dateLabel = item.fixedDeliveryDate
-  ? (() => {
-      const [year, month, day] = item.fixedDeliveryDate!.split('-').map(Number);
-      return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric'
-      });
-    })()
-  : null;
+            ? (() => {
+                const [year, month, day] = item.fixedDeliveryDate!.split('-').map(Number);
+                return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+                  weekday: 'long', month: 'long', day: 'numeric'
+                });
+              })()
+            : null;
 
           return (
             <View>
@@ -246,6 +318,12 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#E07B39', paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20 },
   headerTitle: { fontSize: 28, fontWeight: '700', color: '#fff' },
   headerSub: { fontSize: 14, color: '#FFE5D0', marginTop: 2 },
+  addressBanner: { backgroundColor: '#FFF8F3', borderBottomWidth: 0.5, borderBottomColor: '#F0D5C0', paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addressBannerLabel: { fontSize: 12, color: '#E07B39', fontWeight: '600', flexShrink: 0 },
+  addressBannerText: { fontSize: 12, color: '#333', flex: 1 },
+  addressBannerChange: { fontSize: 12, color: '#E07B39', fontWeight: '600', flexShrink: 0 },
+  addressBannerWarning: { backgroundColor: '#FFF3E8', borderBottomWidth: 0.5, borderBottomColor: '#F0D5C0', paddingHorizontal: 16, paddingVertical: 10 },
+  addressBannerWarningText: { fontSize: 12, color: '#C45500', fontWeight: '500' },
   vegToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginRight: 16, marginTop: 8, gap: 8 },
   vegToggleLabel: { fontSize: 13, fontWeight: '600', color: '#374151' },
   toggleTrack: { width: 44, height: 26, borderRadius: 13, justifyContent: 'center', paddingHorizontal: 2 },

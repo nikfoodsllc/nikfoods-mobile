@@ -109,6 +109,31 @@ function CheckoutForm() {
       if (!newCity.trim() || !newZip.trim()) { setError('Please select a valid address with city and zip code'); return; }
     }
     setLoading(true);
+    // Validate cart items against available dates
+try {
+  const datesRes = await fetch(`${API_BASE}/available-dates`);
+  const datesData = await datesRes.json();
+  if (datesData.success) {
+    const availableDates = datesData.dates
+      .filter((d: any) => !d.isPast && !d.isPastCutoff)
+      .map((d: any) => d.date);
+
+    const unavailableItems = items.filter(item =>
+      !availableDates.includes(item.deliveryDate)
+    );
+
+    if (unavailableItems.length > 0) {
+      const affectedDates = [...new Set(unavailableItems.map(i => i.deliveryDateFormatted))];
+      setError(
+        `Some items in your cart are no longer available for delivery on: ${affectedDates.join(', ')}. Please remove them from your cart and try again.`
+      );
+      setLoading(false);
+      return;
+    }
+  }
+} catch (e) {
+  console.log('Date validation failed, proceeding anyway');
+}
     try {
       if (!selectedAddress && newStreet && saveToProfile) {
         await fetch(`${API_BASE}/address`, {

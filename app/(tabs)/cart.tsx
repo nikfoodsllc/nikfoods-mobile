@@ -160,11 +160,14 @@ export default function CartScreen() {
             <Text style={styles.checkoutBtnText}>Proceed to checkout</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.checkoutBtnDisabled}>
-            <Text style={styles.checkoutBtnDisabledText}>
-              {'Add $' + clubbingResult.totalShortfall.toFixed(2) + ' more'}
-            </Text>
-          </View>
+          <TouchableOpacity
+  style={styles.checkoutBtnDisabled}
+  onPress={() => router.push('/(tabs)')}
+>
+  <Text style={styles.checkoutBtnDisabledText}>
+    {'Add $' + clubbingResult.totalShortfall.toFixed(2) + ' more'}
+  </Text>
+</TouchableOpacity>
         )}
       </View>
 
