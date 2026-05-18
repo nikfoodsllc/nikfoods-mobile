@@ -60,72 +60,91 @@ export function calculateCartClubbing(
     const dayTotal = day.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const shortfall = Math.max(0, minCartValue - dayTotal);
     const meetsMinimum = dayTotal >= minCartValue;
-    return {
-      ...day,
-      dayTotal,
-      shortfall,
-      meetsMinimum,
-    };
+    return { ...day, dayTotal, shortfall, meetsMinimum };
   });
 
-  const lastDay = dayAnalysis[dayAnalysis.length - 1];
   const totalCartValue = dayAnalysis.reduce((sum, d) => sum + d.dayTotal, 0);
-  const daysMeetingMinimum = dayAnalysis.filter(d => d.meetsMinimum);
-
-  if (daysMeetingMinimum.length > 0) {
-    // At least one day meets minimum — can checkout
-    dayAnalysis.forEach(day => {
-      if (!day.meetsMinimum) {
-        day.deliveryMessage = {
-          type: 'warning',
-          message: `Add $${day.shortfall.toFixed(2)} more to meet minimum. Items will be delivered on ${lastDay.dateFormatted}.`,
-          deliveryDate: lastDay.dateFormatted,
-        };
-      }
-    });
-
-    return {
-      canCheckout: true,
-      dayAnalysis,
-      totalShortfall: 0,
-      checkoutBlockMessage: '',
-    };
-  }
-
-  if (totalCartValue >= minCartValue) {
-    // Combined meets minimum — club all to last day
-    dayAnalysis.forEach(day => {
-      if (day.date !== lastDay.date) {
-        day.deliveryMessage = {
-          type: 'warning',
-          message: `Items will be delivered on ${lastDay.dateFormatted} (combined with other days).`,
-          deliveryDate: lastDay.dateFormatted,
-        };
-      }
-    });
-
-    return {
-      canCheckout: true,
-      dayAnalysis,
-      totalShortfall: 0,
-      checkoutBlockMessage: '',
-    };
-  }
 
   // Cannot checkout — even combined doesn't meet minimum
-  const totalShortfall = minCartValue - totalCartValue;
-  dayAnalysis.forEach(day => {
-    day.deliveryMessage = {
-      type: 'error',
-      message: `Min order value not met. Add $${day.shortfall.toFixed(2)} worth of items.`,
+  if (totalCartValue < minCartValue) {
+    const totalShortfall = minCartValue - totalCartValue;
+    dayAnalysis.forEach(day => {
+      day.deliveryMessage = {
+        type: 'error',
+        message: `Min order value not met. Add $${day.shortfall.toFixed(2)} worth of items.`,
+      };
+    });
+    return {
+      canCheckout: false,
+      dayAnalysis,
+      totalShortfall,
+      checkoutBlockMessage: `Add $${totalShortfall.toFixed(2)} more to meet the minimum order value of $${minCartValue.toFixed(2)}.`,
     };
-  });
+  }
+
+  // Grouping algorithm:
+  // 1. Start a group from day i, accumulate forward until group total >= min
+  // 2. Before finalising the group, check if the REMAINING days after this group
+  //    can form their own valid group (i.e. their combined total >= min).
+  //    If not, absorb them into the current group.
+  // 3. Repeat from step 1 for the next unprocessed day.
+
+  const n = dayAnalysis.length;
+  let i = 0;
+
+  while (i < n) {
+    let groupTotal = dayAnalysis[i].dayTotal;
+    let groupEnd = i;
+
+    // Accumulate days until group total meets minimum
+    while (groupTotal < minCartValue && groupEnd + 1 < n) {
+      groupEnd++;
+      groupTotal += dayAnalysis[groupEnd].dayTotal;
+    }
+
+    // Now check: can the remaining days after groupEnd form their own valid group?
+    // If not, absorb them into this group
+    if (groupEnd + 1 < n) {
+      const remainingTotal = dayAnalysis
+        .slice(groupEnd + 1)
+        .reduce((sum, d) => sum + d.dayTotal, 0);
+
+      if (remainingTotal < minCartValue) {
+        // Remaining days can't form a valid group on their own
+        // Absorb them into this group
+        groupEnd = n - 1;
+      }
+    }
+
+    const deliveryDay = dayAnalysis[groupEnd];
+
+    if (groupEnd === i) {
+      // Single day group — standalone delivery
+      dayAnalysis[i].meetsMinimum = true;
+      dayAnalysis[i].deliveryMessage = undefined;
+    } else {
+      // Multi-day group — all days except last clubbed to delivery day
+      for (let k = i; k < groupEnd; k++) {
+        dayAnalysis[k].meetsMinimum = false;
+        dayAnalysis[k].deliveryMessage = {
+          type: 'warning',
+          message: `Delivery moved to ${deliveryDay.dateFormatted} (combined with items from that day).`,
+          deliveryDate: deliveryDay.dateFormatted,
+        };
+      }
+      // Last day in group = delivery day, mark green
+      dayAnalysis[groupEnd].meetsMinimum = true;
+      dayAnalysis[groupEnd].deliveryMessage = undefined;
+    }
+
+    i = groupEnd + 1;
+  }
 
   return {
-    canCheckout: false,
+    canCheckout: true,
     dayAnalysis,
-    totalShortfall,
-    checkoutBlockMessage: `Add $${totalShortfall.toFixed(2)} more to meet the minimum order value of $${minCartValue.toFixed(2)}.`,
+    totalShortfall: 0,
+    checkoutBlockMessage: '',
   };
 }
 
@@ -150,4 +169,5 @@ export function calculateTotalPrice(subtotal: number, deliveryFee: number = 0, d
     total: Number(total.toFixed(2)),
   };
 }
+
 export default calculateCartClubbing;
