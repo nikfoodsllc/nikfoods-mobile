@@ -5,6 +5,20 @@ import { authStore } from '../authStore';
 
 const API_BASE = 'https://www.nikfoods.com/api';
 
+// Field must be outside SignupScreen to prevent remounting on every keystroke
+const Field = ({ label, fieldKey, children, required, errors, fieldRefs }: any) => (
+  <View
+    style={styles.field}
+    ref={(ref) => { fieldRefs.current[fieldKey] = ref; }}
+  >
+    <Text style={styles.label}>
+      {label}{required && <Text style={styles.required}> *</Text>}
+    </Text>
+    {children}
+    {errors[fieldKey] ? <Text style={styles.fieldError}>{errors[fieldKey]}</Text> : null}
+  </View>
+);
+
 export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -97,19 +111,6 @@ export default function SignupScreen() {
     }
   };
 
-  const Field = ({ label, fieldKey, children, required }: any) => (
-    <View
-      style={styles.field}
-      ref={(ref) => { fieldRefs.current[fieldKey] = ref; }}
-    >
-      <Text style={styles.label}>
-        {label}{required && <Text style={styles.required}> *</Text>}
-      </Text>
-      {children}
-      {errors[fieldKey] ? <Text style={styles.fieldError}>{errors[fieldKey]}</Text> : null}
-    </View>
-  );
-
   return (
     <ScrollView ref={scrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
@@ -124,7 +125,7 @@ export default function SignupScreen() {
           </View>
         ) : null}
 
-        <Field label="Full name" fieldKey="name" required>
+        <Field label="Full name" fieldKey="name" required errors={errors} fieldRefs={fieldRefs}>
           <TextInput
             style={[styles.input, errors.name && styles.inputError]}
             placeholder="Enter your full name"
@@ -134,7 +135,7 @@ export default function SignupScreen() {
           />
         </Field>
 
-        <Field label="Email" fieldKey="email" required>
+        <Field label="Email" fieldKey="email" required errors={errors} fieldRefs={fieldRefs}>
           <TextInput
             style={[styles.input, errors.email && styles.inputError]}
             placeholder="Enter your email"
@@ -146,7 +147,7 @@ export default function SignupScreen() {
           />
         </Field>
 
-        <Field label="Phone number" fieldKey="phone" required>
+        <Field label="Phone number" fieldKey="phone" required errors={errors} fieldRefs={fieldRefs}>
           <TextInput
             style={[styles.input, errors.phone && styles.inputError]}
             placeholder="10-digit phone number"
@@ -156,7 +157,7 @@ export default function SignupScreen() {
           />
         </Field>
 
-        <Field label="Password" fieldKey="password" required>
+        <Field label="Password" fieldKey="password" required errors={errors} fieldRefs={fieldRefs}>
           <View style={styles.passwordRow}>
             <TextInput
               style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
@@ -172,7 +173,7 @@ export default function SignupScreen() {
           </View>
         </Field>
 
-        <Field label="Confirm password" fieldKey="confirmPassword" required>
+        <Field label="Confirm password" fieldKey="confirmPassword" required errors={errors} fieldRefs={fieldRefs}>
           <View style={styles.passwordRow}>
             <TextInput
               style={[styles.input, styles.passwordInput, errors.confirmPassword && styles.inputError]}
@@ -189,25 +190,25 @@ export default function SignupScreen() {
         </Field>
 
         <View style={styles.termsRow}>
-  <Text style={styles.termsText}>
-    By creating an account you agree to our{' '}
-    <Text style={styles.termsLink} onPress={() => Linking.openURL('https://www.nikfoods.com/terms')}>
-      Terms of Service
-    </Text>
-    {' '}and{' '}
-    <Text style={styles.termsLink} onPress={() => Linking.openURL('https://www.nikfoods.com/privacy')}>
-      Privacy Policy
-    </Text>
-  </Text>
-</View>
+          <Text style={styles.termsText}>
+            By creating an account you agree to our{' '}
+            <Text style={styles.termsLink} onPress={() => Linking.openURL('https://www.nikfoods.com/terms')}>
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink} onPress={() => Linking.openURL('https://www.nikfoods.com/privacy')}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </View>
 
-<TouchableOpacity
-  style={[styles.signupBtn, loading && styles.signupBtnDisabled]}
-  onPress={handleSignup}
-  disabled={loading}
->
-  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signupBtnText}>Create account</Text>}
-</TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.signupBtn, loading && styles.signupBtnDisabled]}
+          onPress={handleSignup}
+          disabled={loading}
+        >
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signupBtnText}>Create account</Text>}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
@@ -245,6 +246,6 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 14, color: '#888' },
   footerLink: { fontSize: 14, color: '#E07B39', fontWeight: '600' },
   termsRow: { marginTop: 8, marginBottom: 4 },
-termsText: { fontSize: 12, color: '#888', textAlign: 'center', lineHeight: 18 },
-termsLink: { color: '#E07B39', fontWeight: '500' },
+  termsText: { fontSize: 12, color: '#888', textAlign: 'center', lineHeight: 18 },
+  termsLink: { color: '#E07B39', fontWeight: '500' },
 });
