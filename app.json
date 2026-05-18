@@ -13,10 +13,13 @@
       "backgroundColor": "#E07B39"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.nikfoods.mobile",
-      "buildNumber": "1",
-      "infoPlist": {
+  "supportsTablet": false,
+  "bundleIdentifier": "com.nikfoods.mobile",
+  "buildNumber": "1",
+  "entitlements": {
+    "com.apple.developer.in-app-payments": ["merchant.com.nikfoods"]
+  },
+  "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to find nearby delivery addresses.",
         "NSCameraUsageDescription": "We use your camera for profile photos.",
         "NSPhotoLibraryUsageDescription": "We use your photo library for profile photos.",
