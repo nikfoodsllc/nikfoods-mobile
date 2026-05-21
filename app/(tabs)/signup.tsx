@@ -42,9 +42,7 @@ export default function SignupScreen() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{1,3}$/;
       if (!emailRegex.test(email.trim())) newErrors.email = 'Please enter a valid email address';
     }
-    if (!phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else {
+    if (phone.trim()) {
       const digits = phone.replace(/\D/g, '');
       if (digits.length !== 10) newErrors.phone = 'Please enter a 10-digit phone number';
     }
@@ -147,7 +145,7 @@ export default function SignupScreen() {
           />
         </Field>
 
-        <Field label="Phone number" fieldKey="phone" required errors={errors} fieldRefs={fieldRefs}>
+        <Field label="Phone number (optional)" fieldKey="phone" errors={errors} fieldRefs={fieldRefs}>
           <TextInput
             style={[styles.input, errors.phone && styles.inputError]}
             placeholder="10-digit phone number"
