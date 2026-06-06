@@ -1,10 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../authStore';
+
+const API_BASE = 'https://www.nikfoods.com/api';
 
 export default function AccountScreen() {
   const [user, setUser] = useState(authStore.getUser());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const unsubscribe = authStore.subscribe(() => {
@@ -13,6 +16,48 @@ export default function AccountScreen() {
     authStore.loadFromStorage();
     return unsubscribe;
   }, []);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: confirmDeleteAccount,
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    const token = authStore.getToken();
+    if (!token) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert('Error', data.error || 'Failed to delete account. Please try again.');
+        return;
+      }
+
+      await authStore.logout();
+      Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
+      router.replace('/(tabs)');
+    } catch (e) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -54,8 +99,21 @@ export default function AccountScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await authStore.logout(); }}>
+      <TouchableOpacity
+        style={styles.logoutBtn}
+        onPress={async () => { await authStore.logout(); }}
+      >
         <Text style={styles.logoutBtnText}>Sign out</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.deleteBtn}
+        onPress={handleDeleteAccount}
+        disabled={deleting}
+      >
+        <Text style={styles.deleteBtnText}>
+          {deleting ? 'Deleting...' : 'Delete account'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -78,6 +136,8 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 0.5, borderBottomColor: '#F0EDE8' },
   menuItemText: { fontSize: 15, color: '#1A1A1A' },
   menuItemArrow: { fontSize: 16, color: '#888' },
-  logoutBtn: { borderWidth: 1, borderColor: '#CC3300', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12, width: '100%', alignItems: 'center' },
+  logoutBtn: { borderWidth: 1, borderColor: '#CC3300', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12, width: '100%', alignItems: 'center', marginBottom: 12 },
   logoutBtnText: { color: '#CC3300', fontSize: 16, fontWeight: '600' },
+  deleteBtn: { paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12, width: '100%', alignItems: 'center' },
+  deleteBtnText: { color: '#999', fontSize: 14, fontWeight: '500', textDecorationLine: 'underline' },
 });
