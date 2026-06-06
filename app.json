@@ -12,7 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#E07B39"
     },
-    "ios": {
+   "ios": {
   "supportsTablet": false,
   "bundleIdentifier": "com.nikfoods.mobile",
   "buildNumber": "1",
