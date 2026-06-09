@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { authStore } from '../authStore';
 import { checkZipcode } from '../zipcodeStore';
 
@@ -56,68 +56,70 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.logoSection}>
-        <Image source={require('../../assets/images/nikfoods-logo.png')} style={styles.logoImage} resizeMode="contain" />
-        <Text style={styles.tagline}>Authentic Indian food</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
-
-        {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.logoSection}>
+          <Image source={require('../../assets/images/nikfoods-logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Text style={styles.tagline}>Authentic Indian food</Text>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordRow}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
+
+          {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Email</Text>
             <TextInput
-              style={[styles.input, styles.passwordInput]}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
+              style={styles.input}
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
-            <TouchableOpacity style={styles.showBtn} onPress={() => setShowPassword(!showPassword)}>
-              <Text style={styles.showBtnText}>{showPassword ? 'Hide' : 'Show'}</Text>
-            </TouchableOpacity>
           </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity style={styles.showBtn} onPress={() => setShowPassword(!showPassword)}>
+                <Text style={styles.showBtnText}>{showPassword ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TouchableOpacity onPress={() => router.push('/(tabs)/forgot-password')}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Sign in</Text>}
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={() => router.push('/(tabs)/forgot-password')}>
-  <Text style={styles.forgotText}>Forgot password?</Text>
-</TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Sign in</Text>}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>{"Don't have an account? "}</Text>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/signup')}>
-          <Text style={styles.footerLink}>Sign up</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/signup')}>
+            <Text style={styles.footerLink}>Sign up</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </TouchableWithoutFeedback>
   );
 }
 
