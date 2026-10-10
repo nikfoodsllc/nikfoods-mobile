@@ -50,10 +50,8 @@ export default function SignupScreen() {
       newErrors.password = 'Password is required';
     } else if (password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/[A-Z]/.test(password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter';
-    } else if (!/[0-9]/.test(password)) {
-      newErrors.password = 'Password must contain at least one number';
+    } else if (new TextEncoder().encode(password).length > 72) {
+      newErrors.password = 'Password is too long';
     }
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
@@ -159,7 +157,7 @@ export default function SignupScreen() {
           <View style={styles.passwordRow}>
             <TextInput
               style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-              placeholder="Min 8 chars, 1 uppercase, 1 number"
+              placeholder="At least 8 characters"
               value={password}
               onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: '' })); }}
               secureTextEntry={!showPassword}
