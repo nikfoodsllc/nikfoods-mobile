@@ -66,8 +66,7 @@ export default function ForgotPasswordScreen() {
   const handleResetPassword = async () => {
     if (!newPassword) { setError('Please enter a new password'); return; }
     if (newPassword.length < 8) { setError('Password must be at least 8 characters'); return; }
-    if (!/[A-Z]/.test(newPassword)) { setError('Password must contain at least one uppercase letter'); return; }
-    if (!/[0-9]/.test(newPassword)) { setError('Password must contain at least one number'); return; }
+    if (new TextEncoder().encode(newPassword).length > 72) { setError('Password is too long'); return; }
     if (newPassword !== confirmPassword) { setError('Passwords do not match'); return; }
 
     setLoading(true);
@@ -198,7 +197,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.passwordRow}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                placeholder="At least 8 characters"
                 value={newPassword}
                 onChangeText={t => { setNewPassword(t); setError(''); }}
                 secureTextEntry={!showPassword}
