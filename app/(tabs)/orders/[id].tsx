@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CreditNotice from '@/components/CreditNotice';
 import { deliveryOf, ItemRow, StatusChip } from '@/components/OrderParts';
@@ -22,7 +22,9 @@ export default function OrderDetail() {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  // reload every time the screen comes into view (a notification can change the order, e.g. a new delivery date, while it is open)
+  useFocusEffect(
+    useCallback(() => {
     (async () => {
       try {
         const r = await authenticatedFetch(`/api/orders/${encodeURIComponent(String(id))}`);
@@ -33,7 +35,8 @@ export default function OrderDetail() {
         setError(e instanceof Error ? e.message : 'Could not load the order');
       }
     })();
-  }, [id, authenticatedFetch]);
+    }, [id, authenticatedFetch])
+  );
 
   const body = () => {
     if (error) return <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>{error}</Text>;
@@ -83,7 +86,7 @@ export default function OrderDetail() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.lg, paddingVertical: S.md }}>
-        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => router.navigate('/orders')} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
         <Text weight="bold" size={22} style={{ marginLeft: S.md }}>Order</Text>
