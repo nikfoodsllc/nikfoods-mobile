@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 
 type Step = 'email' | 'otp' | 'password';
 

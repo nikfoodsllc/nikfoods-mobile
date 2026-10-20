@@ -5,7 +5,7 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { authStore } from '../authStore';
 import { checkZipcode } from '../zipcodeStore';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 const GOOGLE_KEY = 'AIzaSyCxtbWsrKTYaGh4UqkuF_XNPNUXWrGF97I';
 
 export default function ServiceabilityScreen() {

@@ -8,8 +8,8 @@ import { calculateCartClubbing } from '../cartLogic';
 import { cartStore } from '../cartStore';
 import { zipcodeStore } from '../zipcodeStore';
 
-const STRIPE_KEY = 'pk_live_51HdWaqKA6kkBLygB9g6lJ8QBu5pTCeXfno0x3b7rPV2KFLIf9RziEMPoUd7K3uZyXOEkPxJjMLzCZ2PTO3w2UBqm00kjva9C6K';
-const API_BASE = 'https://www.nikfoods.com/api';
+import { STRIPE_PUBLISHABLE_KEY as STRIPE_KEY } from '@/constants/config';
+import { API_BASE } from '@/constants/config';
 const GOOGLE_KEY = 'AIzaSyCxtbWsrKTYaGh4UqkuF_XNPNUXWrGF97I';
 
 type Address = {

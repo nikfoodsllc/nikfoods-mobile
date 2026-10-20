@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, Touc
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { authStore } from '../authStore';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 const GOOGLE_KEY = 'AIzaSyCxtbWsrKTYaGh4UqkuF_XNPNUXWrGF97I';
 
 type Address = {

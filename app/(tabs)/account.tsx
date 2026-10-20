@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../authStore';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 
 export default function AccountScreen() {
   const [user, setUser] = useState(authStore.getUser());

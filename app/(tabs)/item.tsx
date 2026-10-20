@@ -4,7 +4,7 @@ import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, Touchabl
 import { cartStore } from '../cartStore';
 import { itemCache } from '../itemCache';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 
 type DateOption = {
   id: string;

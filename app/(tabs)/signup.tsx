@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../authStore';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 
 // Field must be outside SignupScreen to prevent remounting on every keystroke
 const Field = ({ label, fieldKey, children, required, errors, fieldRefs }: any) => (

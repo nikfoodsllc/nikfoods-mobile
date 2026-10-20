@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, Touch
 import { authStore } from '../authStore';
 import { itemCache } from '../itemCache';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 
 type Category = {
   _id: string;

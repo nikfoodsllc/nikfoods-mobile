@@ -1,3 +1,4 @@
+import { API_BASE } from '@/constants/config';
 type ZipcodeConfig = {
   zipcode: string;
   minCartValue: number;
@@ -34,7 +35,7 @@ export const zipcodeStore = {
 
 export const checkZipcode = async (zipcode: string): Promise<ZipcodeConfig> => {
   const res = await fetch(
-    `https://www.nikfoods.com/api/zipcode-config?zipcode=${zipcode}`
+    `${API_BASE}/zipcode-config?zipcode=${zipcode}`
   );
 
   if (res.status === 404) {

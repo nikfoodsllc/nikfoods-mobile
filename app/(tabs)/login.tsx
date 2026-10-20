@@ -4,7 +4,7 @@ import { ActivityIndicator, Image, Keyboard, ScrollView, StyleSheet, Text, TextI
 import { authStore } from '../authStore';
 import { checkZipcode } from '../zipcodeStore';
 
-const API_BASE = 'https://www.nikfoods.com/api';
+import { API_BASE } from '@/constants/config';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');

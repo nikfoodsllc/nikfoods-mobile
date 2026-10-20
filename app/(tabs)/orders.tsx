@@ -1,3 +1,4 @@
+import { API_BASE } from '@/constants/config';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -22,7 +23,7 @@ export default function OrdersScreen() {
       await authStore.loadFromStorage();
       const token = authStore.getToken();
       if (!token) { setLoading(false); return; }
-      const res = await fetch('https://www.nikfoods.com/api/orders', {
+      const res = await fetch(`${API_BASE}/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
