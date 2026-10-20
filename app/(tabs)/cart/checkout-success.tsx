@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { deliveryOf } from '@/components/OrderParts';
 import { Button, Card, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
-import PushPrompt from '@/components/PushPrompt';
 import { useApiClient } from '@/hooks/useApiClient';
 import { Order } from '@/types/order';
 
@@ -63,7 +62,6 @@ export default function CheckoutSuccess() {
           </Card>
         )}
 
-        <PushPrompt />
         <View style={{ alignSelf: 'stretch', gap: S.sm, marginTop: S.xl }}>
           <Button label="View order" onPress={() => router.replace({ pathname: '/orders/[id]', params: { id: String(orderId) } })} />
           <Button label="Back to the menu" variant="ghost" onPress={() => router.replace('/')} />

@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
-import { registerPush, targetForNotification, type NotificationTarget } from '@/lib/push';
+import { askForPush, markAsked, pushState, registerPush, targetForNotification, wasAskedBefore, type NotificationTarget } from '@/lib/push';
 
 /**
  * Lives inside the app (renders nothing): keeps this phone registered for the signed-in customer (when they allowed
@@ -25,6 +25,18 @@ export default function PushBridge() {
   };
   const openRef = useRef(open);
   openRef.current = open;
+
+  // the first time the app is opened (guest or signed in): iOS's own "Allow notifications?" question, once.
+  // Not asked again; after that the customer uses Account > Notifications or iPhone Settings.
+  useEffect(() => {
+    (async () => {
+      if (wasAskedBefore() || (await pushState()) !== 'undetermined') return;
+      markAsked();
+      const state = await askForPush();
+      if (state === 'granted' && user) void registerPush(authenticatedFetch);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // a signed-in customer who allowed notifications: (re)register this phone (the token can change)
   useEffect(() => {

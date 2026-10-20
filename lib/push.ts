@@ -5,10 +5,10 @@ import { Linking, Platform } from 'react-native';
 import { SITE_URL } from '@/constants/config';
 
 /**
- * Push notifications. The phone gets a token from Apple (through Expo), the site keeps it against the customer's account and
+
  * sends order updates, menu alerts and cart reminders to it. The customer decides in iPhone Settings and in the app
- * (Account > Notifications). Nothing here asks for permission by itself: that is done at a good moment (after an order, or when the
- * customer turns notifications on).
+ * (Account > Notifications). The question is asked once, the first time the app opens (PushBridge); after that
+ * the customer uses Account > Notifications.
  */
 export type PushState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
