@@ -7,6 +7,7 @@ import DaySheet, { DaySelection } from '@/components/DaySheet';
 import DeliveryBar from '@/components/DeliveryBar';
 import FoodCard from '@/components/FoodCard';
 import ItemSheet from '@/components/ItemSheet';
+import MenuSubscribe from '@/components/MenuSubscribe';
 import { useToast } from '@/components/Toast';
 import { Button, Text, tap } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
@@ -347,6 +348,7 @@ export default function Menu() {
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E5E7EB' }} accessibilityLabel="Veg only" />
         </View>
       </View>
+      <MenuSubscribe />
       <DeliveryBar />
     </View>
   );
@@ -387,6 +389,7 @@ export default function Menu() {
         renderItem={renderRow}
         ListHeaderComponent={header}
         stickyHeaderIndices={[1]}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
         showsVerticalScrollIndicator={false}
