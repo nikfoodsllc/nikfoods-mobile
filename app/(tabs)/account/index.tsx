@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
+import * as Device from 'expo-device';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -12,6 +13,8 @@ import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
+import { authenticate, isLockEnabled, lockSupport, setLockEnabled } from '@/lib/biometrics';
+import { forgetFaceIdSignInHere, isFaceIdSignInOn, turnOffFaceIdSignIn, turnOnFaceIdSignIn } from '@/lib/deviceLogin';
 import { unregisterPush } from '@/lib/push';
 import * as localCart from '@/lib/localStorageCart';
 
@@ -50,6 +53,29 @@ export default function Account() {
   const { user, logout, updateUser } = useAuth();
   const { refreshCart } = useCart();
   const { authenticatedFetch } = useApiClient();
+  const [bio, setBio] = useState<{ available: boolean; label: string }>({ available: false, label: 'Face ID' });
+  const [signInOn, setSignInOn] = useState(isFaceIdSignInOn());
+  const [lockOn, setLockOn] = useState(isLockEnabled());
+  useEffect(() => {
+    void lockSupport().then(setBio);
+  }, []);
+
+  const changeSignIn = async (on: boolean) => {
+    if (on) {
+      const ok = await turnOnFaceIdSignIn(Device.deviceName ?? 'iPhone');
+      setSignInOn(ok);
+      if (!ok) toast(`Could not turn on ${bio.label} sign-in`, 'error');
+    } else {
+      await turnOffFaceIdSignIn();
+      setSignInOn(false);
+    }
+  };
+  const changeLock = async (on: boolean) => {
+    // the same check turns it on or off, so someone borrowing the phone cannot change it
+    if (!(await authenticate(on ? `Turn on ${bio.label} lock` : `Turn off ${bio.label} lock`))) return;
+    setLockEnabled(on);
+    setLockOn(on);
+  };
   const [balance, setBalance] = useState(0);
   const [history, setHistory] = useState<Row[]>([]);
   const [creditOpen, setCreditOpen] = useState(false);
@@ -138,6 +164,11 @@ export default function Account() {
       setCur('');
       setNext('');
       toast('Password changed');
+      // the site cancelled this phone's Face ID key with the old password: get a new one
+      if (isFaceIdSignInOn()) {
+        const again = await turnOnFaceIdSignIn(Device.deviceName ?? 'iPhone');
+        setSignInOn(again);
+      }
     } catch {
       setErr('Network error. Please try again.');
     } finally {
@@ -166,6 +197,8 @@ export default function Account() {
             if (!r.ok) throw new Error('x');
             logout();
             localCart.clearCart();
+            await forgetFaceIdSignInHere();
+            setSignInOn(false);
             await refreshCart();
             toast('Account deleted', 'info');
           } catch {
@@ -213,6 +246,22 @@ export default function Account() {
           <Divider />
           <Item icon="lock-closed-outline" label="Change password" onPress={() => { setErr(''); setPwOpen(true); }} />
         </Card>
+
+        {bio.available && (
+          <Card style={{ paddingVertical: S.xs }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 58 }}>
+              <Ionicons name="scan-outline" size={22} color={C.body} />
+              <Text weight="medium" size={16} style={{ flex: 1 }}>Sign in with {bio.label}</Text>
+              <Switch value={signInOn} onValueChange={(v) => void changeSignIn(v)} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel={`Sign in with ${bio.label}`} />
+            </View>
+            <Divider />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 58 }}>
+              <Ionicons name="lock-closed-outline" size={22} color={C.body} />
+              <Text weight="medium" size={16} style={{ flex: 1 }}>Lock app with {bio.label}</Text>
+              <Switch value={lockOn} onValueChange={(v) => void changeLock(v)} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel={`Lock app with ${bio.label}`} />
+            </View>
+          </Card>
+        )}
 
         <Legal />
 

@@ -7,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AppLock from '@/components/AppLock';
 import PushBridge from '@/components/PushBridge';
 import { ToastProvider } from '@/components/Toast';
 import { APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
@@ -43,7 +44,9 @@ export default function RootLayout() {
         <ToastProvider>
           <AuthProvider>
             <CartProvider>
-              <Nav />
+              <AppLock>
+                <Nav />
+              </AppLock>
             </CartProvider>
           </AuthProvider>
         </ToastProvider>

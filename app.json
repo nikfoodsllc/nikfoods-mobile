@@ -63,6 +63,12 @@
         {
           "mode": "production"
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Unlock NikFoods with Face ID."
+        }
       ]
     ],
     "experiments": {
