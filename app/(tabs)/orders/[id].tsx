@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CreditNotice from '@/components/CreditNotice';
+import DeliveryTracker from '@/components/DeliveryTracker';
 import { deliveryOf, ItemRow, StatusChip } from '@/components/OrderParts';
 import { useToast } from '@/components/Toast';
 import { Card, Divider, Text } from '@/components/ui';
@@ -54,6 +55,8 @@ export default function OrderDetail() {
           <Text size={13} color={C.muted} style={{ marginTop: 2 }}>{order.createdAt ? formatOrderDate(order.createdAt) : ''}</Text>
           <CreditNotice order={order} />
         </Card>
+
+        <DeliveryTracker orderId={order.orderId} />
 
         {order.items.map((d, i) => (
           <Card key={i}>
