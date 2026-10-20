@@ -30,7 +30,10 @@ export default function NotificationSettings() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setState(await pushState());
+    const current = await pushState();
+    setState(current);
+    // allowed but maybe never registered (answered the question before logging in): make sure the site knows this phone
+    if (current === 'granted') void registerPush(authenticatedFetch);
     try {
       const r = await authenticatedFetch('/api/push/preferences');
       const j = await r.json();

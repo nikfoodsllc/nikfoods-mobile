@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
@@ -15,6 +16,9 @@ export default function PushBridge() {
   const { user } = useAuth();
   const { authenticatedFetch } = useApiClient();
   const handledColdStart = useRef(false);
+  // the latest signed-in customer, for callbacks that outlive a render (the permission answer can arrive much later)
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const open = (target: NotificationTarget | null) => {
     if (!target) return;
@@ -33,8 +37,17 @@ export default function PushBridge() {
       if (wasAskedBefore() || (await pushState()) !== 'undetermined') return;
       markAsked();
       const state = await askForPush();
-      if (state === 'granted' && user) void registerPush(authenticatedFetch);
+      if (state === 'granted' && userRef.current) void registerPush(authenticatedFetch);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // coming back to the app (also after the question or iPhone Settings): register this phone if it is allowed now
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && userRef.current) void registerPush(authenticatedFetch);
+    });
+    return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
