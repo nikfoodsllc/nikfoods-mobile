@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Switch, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CartBar from '@/components/CartBar';
 import DaySheet, { DaySelection } from '@/components/DaySheet';
@@ -39,6 +41,7 @@ type Row =
   | { type: 'dates'; key: string; catId: string; dates: { date: string; label: string }[]; selected: string }
   | { type: 'pair'; key: string; cells: Cell[] }
   | { type: 'empty'; key: string; text: string };
+type DatesRow = Extract<Row, { type: 'dates' }>;
 
 const logo = require('../../assets/images/nikfoods-logo.png');
 
@@ -238,6 +241,45 @@ export default function Menu() {
     return out;
   }, [sections, categories, map, availableDates, dateByCat, vegOnly]);
 
+  // ---- the day chips stay pinned while you scroll through the dishes they apply to ----
+  // For every row: the day chips that govern it (the nearest "dates" row above it in the same category), or null.
+  const datesFor = useMemo(() => {
+    const out: Array<{ row: DatesRow; at: number } | null> = [];
+    let cur: { row: DatesRow; at: number } | null = null;
+    rows.forEach((r, i) => {
+      if (r.type === 'cat') cur = null;
+      else if (r.type === 'dates') cur = { row: r, at: i };
+      else if (r.type === 'sub' && rows[i + 1]?.type === 'dates') cur = null; // this sub-category has its own day chips right below
+      out.push(cur);
+    });
+    return out;
+  }, [rows]);
+  const datesForRef = useRef(datesFor);
+  datesForRef.current = datesFor;
+  const [stickyKey, setStickyKey] = useState<string | null>(null);
+
+  // the category row scrolls sideways: a fade and an arrow on the right edge say there is more, until the end is reached
+  const chipsRef = useRef<ScrollView>(null);
+  const chipsSize = useRef({ content: 0, layout: 0, x: 0 });
+  const [chipsMore, setChipsMore] = useState({ left: false, right: true });
+  const updateChipsMore = () => {
+    const { content, layout, x } = chipsSize.current;
+    if (!content || !layout) return;
+    const next = { left: x > 8, right: content - layout - x > 8 };
+    setChipsMore((p) => (p.left === next.left && p.right === next.right ? p : next));
+  };
+  // the day chips are pinned once their own row has scrolled out of sight and dishes of that section are on screen
+  const onViewable = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+    const idx = viewableItems.map((v) => v.index).filter((i): i is number => i != null && i > 0);
+    if (!idx.length) return setStickyKey(null);
+    const top = Math.min(...idx);
+    const governing = datesForRef.current[top];
+    setStickyKey(governing && top > governing.at ? governing.row.key : null);
+  });
+  const viewConfig = useRef({ itemVisiblePercentThreshold: 10 });
+  const stickyRow = useMemo(() => (stickyKey ? (rows.find((r) => r.type === 'dates' && r.key === stickyKey) as DatesRow | undefined) ?? null : null), [rows, stickyKey]);
+  const listExtra = useMemo(() => ({ cart, stickyKey, dateByCat, chipsMore }), [cart, stickyKey, dateByCat, chipsMore]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await reload();
@@ -250,7 +292,26 @@ export default function Menu() {
 
   const renderChips = () => (
     <View style={{ backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: S.sm, gap: S.md }}>
+      <View>
+      <ScrollView
+        ref={chipsRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          chipsSize.current.x = e.nativeEvent.contentOffset.x;
+          updateChipsMore();
+        }}
+        onLayout={(e) => {
+          chipsSize.current.layout = e.nativeEvent.layout.width;
+          updateChipsMore();
+        }}
+        onContentSizeChange={(w) => {
+          chipsSize.current.content = w;
+          updateChipsMore();
+        }}
+        contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: S.sm, gap: S.md }}
+      >
         {[{ _id: '', name: 'All', imageUrl: '' }, ...categories].map((c) => {
           const on = selectedCategory === c._id;
           return (
@@ -265,6 +326,37 @@ export default function Menu() {
           );
         })}
       </ScrollView>
+      {chipsMore.left && <LinearGradient pointerEvents="none" colors={['#FFFFFF', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28 }} />}
+      {chipsMore.right && (
+        <View pointerEvents="box-none" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 64, justifyContent: 'center', alignItems: 'flex-end' }}>
+          <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', '#FFFFFF']} start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 0 }} style={StyleSheet.absoluteFill} />
+          <Pressable
+            onPress={() => {
+              tap();
+              chipsRef.current?.scrollTo({ x: chipsSize.current.x + 220, animated: true });
+            }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Show more categories"
+            style={{ width: 28, height: 28, borderRadius: 14, marginRight: 8, marginBottom: 14, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="chevron-forward" size={16} color={C.body} />
+          </Pressable>
+        </View>
+      )}
+      </View>
+      {stickyRow && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ borderTopWidth: 1, borderTopColor: C.line }} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: 6, gap: S.sm }} keyboardShouldPersistTaps="handled">
+          {stickyRow.dates.map((d) => {
+            const on = d.date === stickyRow.selected;
+            return (
+              <Pressable key={d.date} onPress={() => { tap(); setDateByCat((p) => ({ ...p, [stickyRow.catId]: d.date })); }} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 34, paddingHorizontal: 14, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
+                <Text weight="semibold" size={13} color={on ? C.white : C.body} maxFontSizeMultiplier={1.1}>{d.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -390,7 +482,9 @@ export default function Menu() {
         showsVerticalScrollIndicator={false}
         initialNumToRender={8}
         windowSize={9}
-        extraData={cart}
+        extraData={listExtra}
+        onViewableItemsChanged={onViewable.current}
+        viewabilityConfig={viewConfig.current}
       />
       <CartBar />
       <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} />
