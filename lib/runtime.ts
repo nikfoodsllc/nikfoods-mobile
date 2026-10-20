@@ -72,7 +72,12 @@ export async function initRuntime(): Promise<void> {
   // relative API calls from the website code
   const realFetch = globalThis.fetch.bind(globalThis);
   globalThis.fetch = ((input: any, init?: any) => {
-    if (typeof input === 'string' && input.startsWith('/')) return realFetch(`${SITE_URL}${input}`, init);
+    if (typeof input === 'string' && input.startsWith('/')) {
+      // tell the site this is the iPhone app (the admin's Order Source filter reads it)
+      const headers = new Headers(init?.headers ?? {});
+      headers.set('x-nikfoods-client', 'ios');
+      return realFetch(`${SITE_URL}${input}`, { ...(init ?? {}), headers });
+    }
     return realFetch(input, init);
   }) as typeof fetch;
 
