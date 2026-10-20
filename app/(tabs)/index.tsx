@@ -326,7 +326,23 @@ export default function Menu() {
           );
         })}
       </ScrollView>
-      {chipsMore.left && <LinearGradient pointerEvents="none" colors={['#FFFFFF', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28 }} />}
+      {chipsMore.left && (
+        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 64, justifyContent: 'center', alignItems: 'flex-start' }}>
+          <LinearGradient pointerEvents="none" colors={['#FFFFFF', 'rgba(255,255,255,0)']} start={{ x: 0.3, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+          <Pressable
+            onPress={() => {
+              tap();
+              chipsRef.current?.scrollTo({ x: Math.max(chipsSize.current.x - 220, 0), animated: true });
+            }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Show earlier categories"
+            style={{ width: 28, height: 28, borderRadius: 14, marginLeft: 8, marginBottom: 14, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="chevron-back" size={16} color={C.body} />
+          </Pressable>
+        </View>
+      )}
       {chipsMore.right && (
         <View pointerEvents="box-none" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 64, justifyContent: 'center', alignItems: 'flex-end' }}>
           <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', '#FFFFFF']} start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 0 }} style={StyleSheet.absoluteFill} />
