@@ -386,7 +386,7 @@ export default function Menu() {
         keyExtractor={(r) => r.key}
         renderItem={renderRow}
         ListHeaderComponent={header}
-        stickyHeaderIndices={[0]}
+        stickyHeaderIndices={[1]}
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
         showsVerticalScrollIndicator={false}
