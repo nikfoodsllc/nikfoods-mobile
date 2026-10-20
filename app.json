@@ -12,14 +12,16 @@
       "resizeMode": "contain",
       "backgroundColor": "#E07B39"
     },
-   "ios": {
-  "supportsTablet": false,
-  "bundleIdentifier": "com.nikfoods.mobile",
-  "buildNumber": "1",
-  "entitlements": {
-    "com.apple.developer.in-app-payments": ["merchant.com.nikfoods"]
-  },
-  "infoPlist": {
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nikfoods.mobile",
+      "buildNumber": "1",
+      "entitlements": {
+        "com.apple.developer.in-app-payments": [
+          "merchant.com.nikfoods"
+        ]
+      },
+      "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to find nearby delivery addresses.",
         "NSCameraUsageDescription": "We use your camera for profile photos.",
         "NSPhotoLibraryUsageDescription": "We use your photo library for profile photos.",
@@ -56,6 +58,12 @@
       "eas": {
         "projectId": "a5abe212-9889-4412-97d1-9b587c95261d"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a5abe212-9889-4412-97d1-9b587c95261d"
     }
   }
 }

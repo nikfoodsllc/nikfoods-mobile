@@ -6,16 +6,33 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://livesite-dev.vercel.app",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51HdWaqKA6kkBLygBP1wox5SfF9lISOSJm2m8RglZ00SykezxShHeX3iE7JBopoUBvbOfmT6spgeIj8BjwcCJ1DWf007FFohpqz"
+      },
+      "channel": "development"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "store",
+      "channel": "preview",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://livesite-dev.vercel.app",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51HdWaqKA6kkBLygBP1wox5SfF9lISOSJm2m8RglZ00SykezxShHeX3iE7JBopoUBvbOfmT6spgeIj8BjwcCJ1DWf007FFohpqz"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://www.nikfoods.com",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51HdWaqKA6kkBLygB9g6lJ8QBu5pTCeXfno0x3b7rPV2KFLIf9RziEMPoUd7K3uZyXOEkPxJjMLzCZ2PTO3w2UBqm00kjva9C6K"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "preview": {}
   }
 }
