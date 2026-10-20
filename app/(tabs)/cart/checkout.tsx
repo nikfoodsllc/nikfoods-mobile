@@ -15,6 +15,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { cartTotalsWithTip } from '@/lib/checkoutTotals';
 import { closedItemsNotice, parseClosedItems } from '@/lib/closedDaysNotice';
+import { emptyCartEverywhere } from '@/lib/cartSync';
 import * as localCart from '@/lib/localStorageCart';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
 import { paymentIntentIdFromClientSecret, reportPaymentError } from '@/lib/checkout/reportPaymentError';
@@ -249,7 +250,7 @@ export default function Checkout() {
 
   const finish = async (id: string) => {
     done.current = true;
-    localCart.clearCart();
+    await emptyCartEverywhere();
     await refreshCart();
     router.replace({ pathname: '/cart/checkout-success', params: { orderId: id } });
   };
