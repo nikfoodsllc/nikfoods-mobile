@@ -7,16 +7,19 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import PushBridge from '@/components/PushBridge';
 import { ToastProvider } from '@/components/Toast';
 import { APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
 import { C } from '@/constants/theme';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { configureNotifications } from '@/lib/push';
 import { initRuntime, onRedirect } from '@/lib/runtime';
 
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+configureNotifications();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, ...Ionicons.font, ...FontAwesome.font });
@@ -57,6 +60,7 @@ function Nav() {
 
   return (
     <>
+      <PushBridge />
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'slide_from_right' }}>
         <Stack.Screen name="(tabs)" />

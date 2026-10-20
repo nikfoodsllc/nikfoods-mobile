@@ -12,6 +12,7 @@ import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
+import { unregisterPush } from '@/lib/push';
 import * as localCart from '@/lib/localStorageCart';
 
 type Row = { at: string; amount: number; type: 'issued' | 'used' | 'restored' | 'adjusted'; orderId?: string; note?: string; items?: Array<{ name: string; quantity: number; amount: number }> };
@@ -145,6 +146,8 @@ export default function Account() {
   };
 
   const signOut = () => {
+    // this phone stops getting this customer's notifications (sent before the sign-out, while the login still works)
+    void unregisterPush(authenticatedFetch);
     logout();
     localCart.clearCart();
     void refreshCart();
@@ -205,6 +208,8 @@ export default function Account() {
 
         <Card style={{ paddingVertical: S.xs }}>
           <Item icon="location-outline" label="Addresses" onPress={() => router.push('/account/addresses')} />
+          <Divider />
+          <Item icon="notifications-outline" label="Notifications" onPress={() => router.push('/account/notifications')} />
           <Divider />
           <Item icon="lock-closed-outline" label="Change password" onPress={() => { setErr(''); setPwOpen(true); }} />
         </Card>
