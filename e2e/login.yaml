@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+---
+- stopApp
+- openLink: exp://127.0.0.1:8081
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Veg only"
+    timeout: 90000
+- tapOn: "Account, tab.*"
+- tapOn: "Log in"
+- tapOn:
+    id: "field-Email"
+- inputText: "jainshrey2004+apptest1@gmail.com"
+- tapOn:
+    id: "field-Password"
+- inputText: "${TEST_PASSWORD}"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "App Tester"
+    timeout: 30000
+- takeScreenshot: l2-account

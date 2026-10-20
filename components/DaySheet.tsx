@@ -103,20 +103,27 @@ export default function DaySheet({
           const q = picked.get(d.date) ?? 0;
           const on = q > 0;
           return (
-            <Pressable
+            <View
               key={d.date}
-              onPress={() => {
-                tap();
-                toggle(d.date);
-              }}
               style={{ flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: S.md, borderRadius: R.lg, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, marginBottom: S.sm }}
             >
-              <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: on ? C.brand : '#D1D5DB', backgroundColor: on ? C.brand : C.white, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-                {on && <Ionicons name="checkmark" size={16} color={C.onBrand} />}
-              </View>
-              <Text weight="semibold" size={16} style={{ flex: 1 }}>{d.formattedDate}</Text>
+              <Pressable
+                onPress={() => {
+                  tap();
+                  toggle(d.date);
+                }}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={d.formattedDate}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', minHeight: 60 }}
+              >
+                <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: on ? C.brand : '#D1D5DB', backgroundColor: on ? C.brand : C.white, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+                  {on && <Ionicons name="checkmark" size={16} color={C.onBrand} />}
+                </View>
+                <Text weight="semibold" size={16} style={{ flex: 1 }}>{d.formattedDate}</Text>
+              </Pressable>
               {on && <Stepper compact value={q} onMinus={() => setQty(d.date, q - 1)} onPlus={() => setQty(d.date, q + 1)} />}
-            </Pressable>
+            </View>
           );
         })
       )}

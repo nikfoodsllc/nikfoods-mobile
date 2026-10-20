@@ -123,7 +123,7 @@ export default function AddressForm({ address, onClose, onSaved }: { address: IA
       {options.length > 0 && (
         <View style={{ marginTop: -S.sm, marginBottom: S.lg, borderRadius: R.md, borderWidth: 1, borderColor: C.line, overflow: 'hidden' }}>
           {options.slice(0, 5).map((p, i) => (
-            <Pressable key={p.place_id} onPress={() => choose(p)} style={{ padding: S.md, borderTopWidth: i ? 1 : 0, borderTopColor: C.line, flexDirection: 'row', gap: S.sm, alignItems: 'center' }}>
+            <Pressable key={p.place_id} testID={`place-option-${i}`} onPress={() => choose(p)} style={{ padding: S.md, borderTopWidth: i ? 1 : 0, borderTopColor: C.line, flexDirection: 'row', gap: S.sm, alignItems: 'center' }}>
               <Ionicons name="location-outline" size={18} color={C.muted} />
               <Text size={14} style={{ flex: 1 }} numberOfLines={2}>{p.description}</Text>
             </Pressable>

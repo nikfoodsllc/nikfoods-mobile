@@ -168,7 +168,7 @@ export function Sheet({
             borderTopLeftRadius: R.xl,
             borderTopRightRadius: R.xl,
             maxHeight: full ? '94%' : '88%',
-            minHeight: full ? '94%' : undefined,
+            height: full ? '94%' : undefined,
             paddingBottom: footer ? 0 : insets.bottom,
             overflow: 'hidden',
           }}
@@ -182,7 +182,7 @@ export function Sheet({
               <Ionicons name="close" size={20} color={C.text} />
             </Pressable>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
+          <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
             {children}
           </ScrollView>
           {footer ? (
