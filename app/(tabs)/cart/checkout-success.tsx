@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deliveryOf } from '@/components/OrderParts';
@@ -15,6 +16,10 @@ export default function CheckoutSuccess() {
   const { authenticatedFetch } = useApiClient();
   const [order, setOrder] = useState<Order | null>(null);
 
+  // the confirmation belongs to this moment only: when it goes out of view (another tab, View order), the Cart tab goes back to its list
+  const navigation = useNavigation() as unknown as { addListener: (e: 'blur', cb: () => void) => () => void; popToTop?: () => void };
+  useEffect(() => navigation.addListener('blur', () => navigation.popToTop?.()), [navigation]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -28,7 +33,7 @@ export default function CheckoutSuccess() {
   }, [orderId, authenticatedFetch]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: S.xxl * 1.5, alignItems: 'center' }}>
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: C.greenBg, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }}>
@@ -58,7 +63,7 @@ export default function CheckoutSuccess() {
         )}
 
         <View style={{ alignSelf: 'stretch', gap: S.sm, marginTop: S.xl }}>
-          <Button label="View order" onPress={() => router.replace({ pathname: '/order/[id]', params: { id: String(orderId) } })} />
+          <Button label="View order" onPress={() => router.replace({ pathname: '/orders/[id]', params: { id: String(orderId) } })} />
           <Button label="Back to the menu" variant="ghost" onPress={() => router.replace('/')} />
         </View>
       </ScrollView>

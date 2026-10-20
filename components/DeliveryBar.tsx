@@ -98,7 +98,7 @@ export default function DeliveryBar() {
               label="Add address"
               onPress={() => {
                 setOpen(false);
-                router.push('/addresses');
+                router.push('/account/addresses');
               }}
             />
           </View>

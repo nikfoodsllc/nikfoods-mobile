@@ -185,7 +185,7 @@ export default function Account() {
         ) : null}
 
         <Card style={{ paddingVertical: S.xs }}>
-          <Item icon="location-outline" label="Addresses" onPress={() => router.push('/addresses')} />
+          <Item icon="location-outline" label="Addresses" onPress={() => router.push('/account/addresses')} />
           <Divider />
           <Item icon="lock-closed-outline" label="Change password" onPress={() => { setErr(''); setPwOpen(true); }} />
         </Card>

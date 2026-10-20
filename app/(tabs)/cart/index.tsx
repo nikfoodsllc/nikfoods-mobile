@@ -49,7 +49,7 @@ export default function CartScreen() {
       router.push('/login');
       return;
     }
-    router.push('/checkout');
+    router.push('/cart/checkout');
   };
 
   return (

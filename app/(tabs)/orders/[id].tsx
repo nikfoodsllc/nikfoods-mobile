@@ -81,7 +81,7 @@ export default function OrderDetail() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.lg, paddingVertical: S.md }}>
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />

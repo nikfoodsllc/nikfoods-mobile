@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DeliveryBar from '@/components/DeliveryBar';
@@ -57,9 +58,11 @@ export default function Checkout() {
   const sentInstructions = useRef<string | null>(null);
 
   // not signed in: back to the cart's login prompt
+  // (the checkout stays open behind the other tabs, so these two only act while it is the screen in front)
+  const focused = useIsFocused();
   useEffect(() => {
-    if (!user && !cartLoading) router.replace('/login');
-  }, [user, cartLoading, router]);
+    if (focused && !user && !cartLoading) router.replace('/login');
+  }, [focused, user, cartLoading, router]);
 
   // what the profile already knows
   useEffect(() => {
@@ -91,8 +94,8 @@ export default function Checkout() {
 
   // empty cart: back to the cart (unless we just paid or a closed notice is showing)
   useEffect(() => {
-    if (!cartLoading && (!cart || cart.days.length === 0) && !closed && !done.current) router.replace('/cart');
-  }, [cart, cartLoading, closed, router]);
+    if (focused && !cartLoading && (!cart || cart.days.length === 0) && !closed && !done.current) router.replace('/cart');
+  }, [focused, cart, cartLoading, closed, router]);
 
   // store credit balance
   useEffect(() => {
@@ -248,7 +251,7 @@ export default function Checkout() {
     done.current = true;
     localCart.clearCart();
     await refreshCart();
-    router.replace({ pathname: '/checkout-success', params: { orderId: id } });
+    router.replace({ pathname: '/cart/checkout-success', params: { orderId: id } });
   };
 
   const pay = async () => {
@@ -330,7 +333,7 @@ export default function Checkout() {
 
   if (closed && (!cart || cart.days.length === 0)) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, padding: S.lg, gap: S.lg }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg, padding: S.lg, gap: S.lg }}>
         <View style={{ padding: S.lg, borderRadius: R.lg, backgroundColor: C.redBg }}>
           <Text size={15} color={C.red} style={{ lineHeight: 22 }}>{closed}</Text>
         </View>
@@ -341,7 +344,7 @@ export default function Checkout() {
 
   if (!cart || cart.days.length === 0 || !totals) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={C.brand} />
       </SafeAreaView>
     );
@@ -353,7 +356,7 @@ export default function Checkout() {
   const addrLine = cart.selectedAddress ? [cart.selectedAddress.addressLine1, cart.selectedAddress.addressLine2].filter(Boolean).join(', ') : '';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.lg, paddingVertical: S.md, backgroundColor: C.surface }}>
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />

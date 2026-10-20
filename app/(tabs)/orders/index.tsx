@@ -77,7 +77,7 @@ export default function Orders() {
         renderItem={({ item: o }) => {
           const refunded = getRefundedAmount(o);
           return (
-            <Pressable onPress={() => router.push({ pathname: '/order/[id]', params: { id: o.orderId } })} accessibilityRole="button" accessibilityLabel={`Order ${o.orderId}`}>
+            <Pressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: o.orderId } })} accessibilityRole="button" accessibilityLabel={`Order ${o.orderId}`}>
               <Card>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: S.md }}>
                   <Text weight="bold" size={15} numberOfLines={1} style={{ flex: 1 }}>{o.orderId.startsWith('#') ? o.orderId : `#${o.orderId}`}</Text>
