@@ -41,7 +41,7 @@ export default function Checkout() {
   const [tipPct, setTipPct] = useState(0);
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditLoaded, setCreditLoaded] = useState(false);
-  const [useCredit, setUseCredit] = useState(false);
+  const [useCredit, setUseCredit] = useState(true);
   const [serverCredit, setServerCredit] = useState<{ applied: number; covered: boolean; platformFee?: number; tax?: number; total?: number } | null>(null);
   const [intentId, setIntentId] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
