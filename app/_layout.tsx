@@ -24,7 +24,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     initRuntime()
-      .catch(() => {})
+      .catch((e) => console.warn('runtime init failed', e))
       .finally(() => setReady(true));
   }, []);
 

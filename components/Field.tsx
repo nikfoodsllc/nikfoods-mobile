@@ -13,6 +13,8 @@ export default function Field({ label, error, secure, right, ...rest }: TextInpu
       <Text weight="semibold" size={14} color={C.body} style={{ marginBottom: 6 }}>{label}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', height: 54, borderRadius: R.md, borderWidth: 1.5, borderColor: error ? C.red : focus ? C.brand : C.line, backgroundColor: C.white, paddingHorizontal: S.lg }}>
         <TextInput
+          autoCorrect={false}
+          spellCheck={false}
           {...rest}
           secureTextEntry={secure ? hidden : false}
           onFocus={(e) => {
@@ -26,6 +28,7 @@ export default function Field({ label, error, secure, right, ...rest }: TextInpu
           placeholderTextColor={C.faint}
           style={{ flex: 1, fontFamily: FONT.medium, fontSize: 17, color: C.text, height: '100%' }}
           accessibilityLabel={label}
+          testID={rest.testID ?? `field-${label}`}
         />
         {secure ? (
           <Pressable hitSlop={10} onPress={() => setHidden((h) => !h)} accessibilityRole="button" accessibilityLabel={hidden ? 'Show password' : 'Hide password'}>

@@ -1,4 +1,5 @@
 'use client';
+import { redirectHome } from '@/lib/runtime';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SESSION_EXPIRED_KEY } from '@/hooks/useApiClient';
@@ -150,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Update user state
         setUser(null);
         // Redirect to home page
-        window.location.href = '/';
+        redirectHome('/');
       }
     };
 

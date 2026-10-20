@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { redirectHome } from '@/lib/runtime';
 
 /**
  * Session expired flag key for localStorage
@@ -34,7 +35,7 @@ export function useApiClient() {
     clearAuthData();
 
     // Redirect to home page
-    window.location.href = '/';
+    redirectHome('/');
   }, []);
 
   /**

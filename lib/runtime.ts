@@ -22,6 +22,11 @@ export function onRedirect(listener: (path: string) => void): () => void {
   return () => redirectListeners.delete(listener);
 }
 
+/** The website code does `window.location.href = '/'` when a session expires: here it asks the app to show the sign-in screen. */
+export function redirectHome(path = '/'): void {
+  redirectListeners.forEach((l) => l(path));
+}
+
 export async function initRuntime(): Promise<void> {
   if (started) return;
   started = true;
@@ -71,37 +76,22 @@ export async function initRuntime(): Promise<void> {
     return realFetch(input, init);
   }) as typeof fetch;
 
-  // window.location.href = '/' (session expired) -> let the app decide what to show
-  const location = {
-    origin: SITE_URL,
-    pathname: '/',
-    search: '',
-    reload: () => {},
-    assign: (p: string) => redirectListeners.forEach((l) => l(p)),
-    replace: (p: string) => redirectListeners.forEach((l) => l(p)),
-    get href() {
-      return `${SITE_URL}/`;
-    },
-    set href(p: string) {
-      redirectListeners.forEach((l) => l(p));
-    },
-  };
-  (globalThis as any).window = (globalThis as any).window ?? globalThis;
-  (globalThis as any).window.location = location;
-  (globalThis as any).location = location;
-
   // document.visibilityState / visibilitychange (used to refresh the profile when the app comes back)
-  const visibility = new Set<Listener>();
-  (globalThis as any).document = {
-    get visibilityState() {
-      return AppState.currentState === 'active' ? 'visible' : 'hidden';
-    },
-    addEventListener: (type: string, l: Listener) => {
-      if (type === 'visibilitychange') visibility.add(l);
-    },
-    removeEventListener: (type: string, l: Listener) => {
-      if (type === 'visibilitychange') visibility.delete(l);
-    },
-  };
-  AppState.addEventListener('change', () => visibility.forEach((l) => l()));
+  try {
+    const visibility = new Set<Listener>();
+    (globalThis as any).document = {
+      get visibilityState() {
+        return AppState.currentState === 'active' ? 'visible' : 'hidden';
+      },
+      addEventListener: (type: string, l: Listener) => {
+        if (type === 'visibilitychange') visibility.add(l);
+      },
+      removeEventListener: (type: string, l: Listener) => {
+        if (type === 'visibilitychange') visibility.delete(l);
+      },
+    };
+    AppState.addEventListener('change', () => visibility.forEach((l) => l()));
+  } catch (e) {
+    console.warn('runtime: document shim failed', e);
+  }
 }

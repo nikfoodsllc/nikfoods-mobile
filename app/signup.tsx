@@ -9,10 +9,10 @@ import { C } from '@/constants/theme';
 import { SITE_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 
-function Check({ on, onPress, children, error }: { on: boolean; onPress: () => void; children: React.ReactNode; error?: boolean }) {
+function Check({ on, onPress, children, error, testID }: { on: boolean; onPress: () => void; children: React.ReactNode; error?: boolean; testID?: string }) {
   return (
-    <Pressable onPress={onPress} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 14 }} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-      <View style={{ width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: on ? C.brand : error ? C.red : '#D1D5DB', backgroundColor: on ? C.brand : C.white, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+    <Pressable testID={testID} onPress={onPress} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 14 }} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+      <View testID={testID ? `${testID}-box` : undefined} style={{ width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: on ? C.brand : error ? C.red : '#D1D5DB', backgroundColor: on ? C.brand : C.white, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
         {on && <Ionicons name="checkmark" size={16} color={C.onBrand} />}
       </View>
       <View style={{ flex: 1 }}>{children}</View>
@@ -78,7 +78,7 @@ export default function Signup() {
       <Field label="Email" value={email} onChangeText={setEmail} error={errors.email} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" />
       <Field label="Phone (optional)" value={phone} onChangeText={setPhone} error={errors.phone} keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
       <Field label="Password" value={password} onChangeText={setPassword} error={errors.password} secure autoCapitalize="none" textContentType="newPassword" />
-      <Check on={privacy} onPress={() => setPrivacy((v) => !v)} error={!!errors.privacy}>
+      <Check testID="accept-privacy" on={privacy} onPress={() => setPrivacy((v) => !v)} error={!!errors.privacy}>
         <Text size={14} color={C.body}>
           I accept the <Text size={14} weight="semibold" color={C.brandDark} onPress={() => Linking.openURL(`${SITE_URL}/privacy`)}>Privacy Policy</Text> and <Text size={14} weight="semibold" color={C.brandDark} onPress={() => Linking.openURL(`${SITE_URL}/terms`)}>Terms</Text>
         </Text>
