@@ -458,10 +458,10 @@ export default function Checkout() {
 
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: S.lg, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line }}>
         <Button
-          label={covered ? 'Place order' : `Pay  ·  $${(creditApplied > 0 ? cardPart : totals.total).toFixed(2)}`}
+          label={preparing && !clientSecret && !covered ? 'Getting payment ready' : covered ? 'Place order' : `Pay  ·  $${(creditApplied > 0 ? cardPart : totals.total).toFixed(2)}`}
           onPress={pay}
-          loading={paying}
-          disabled={preparing && !clientSecret && !covered}
+          // while the payment is being prepared the button shows a spinner (orange), not a grey dead button
+          loading={paying || (preparing && !clientSecret && !covered)}
         />
       </View>
     </SafeAreaView>

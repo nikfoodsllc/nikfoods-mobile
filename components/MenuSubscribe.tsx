@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { LayoutAnimation, Pressable, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Text, tap } from '@/components/ui';
-import { C, R } from '@/constants/theme';
+import { Button, Text, tap } from '@/components/ui';
+import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
-// The same card as the website's home page (MenuSubscriptionSection): the same words, the same checks and the same calls
+// The website's "Get notified" sign-up (MenuSubscriptionSection): the same words, the same checks and the same calls
 // (/api/menu-subscriptions/check and /subscribe), so a person who subscribes in the app is on the same list.
+// On a phone it starts as ONE slim row so the menu stays the first thing you see, and opens into the form when tapped.
+// Someone who is already subscribed sees nothing.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function MenuSubscribe() {
@@ -15,23 +17,25 @@ export default function MenuSubscribe() {
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(true);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(Boolean(user?.email));
   const [subscribed, setSubscribed] = useState(false);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // a signed-in customer starts with their own email, and is told when it is already on the list
+  // a signed-in customer starts with their own email, and is skipped when it is already on the list
   useEffect(() => {
     let live = true;
     (async () => {
       if (user?.email) {
+        setChecking(true);
         setEmail(user.email);
         try {
           const response = await fetch(`/api/menu-subscriptions/check?email=${encodeURIComponent(user.email)}`);
           const data = await response.json();
           if (live && data.subscribed) setSubscribed(true);
         } catch {
-          // the form simply stays; subscribing again is answered with "already subscribed"
+          // the row simply stays; subscribing again is answered with "already subscribed"
         }
       }
       if (live) setChecking(false);
@@ -40,6 +44,13 @@ export default function MenuSubscribe() {
       live = false;
     };
   }, [user?.email]);
+
+  const toggle = () => {
+    tap();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen((v) => !v);
+    setError('');
+  };
 
   const submit = async () => {
     setError('');
@@ -57,13 +68,14 @@ export default function MenuSubscribe() {
       const data = await response.json().catch(() => ({}));
       if (response.ok && data.success) {
         toast('Successfully subscribed to menu notifications!', 'success');
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setSubscribed(true);
       } else if (response.status === 409) {
-        setError('This email is already subscribed');
+        toast('This email is already subscribed', 'info');
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setSubscribed(true);
       } else {
-        const message = data.error || 'Failed to subscribe. Please try again.';
-        setError(message);
+        setError(data.error || 'Failed to subscribe. Please try again.');
         toast(data.error || 'Failed to subscribe', 'error');
       }
     } catch {
@@ -74,26 +86,34 @@ export default function MenuSubscribe() {
     }
   };
 
-  if (checking) {
-    return (
-      <Card style={{ minHeight: 120, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={C.brand} />
-      </Card>
-    );
-  }
+  // nothing to show while we find out, and nothing once the email is on the list
+  if (checking || subscribed) return null;
 
-  if (subscribed) {
+  const emailError = error && !/agree/i.test(error) ? error : '';
+  const consentError = error && /agree/i.test(error) ? error : '';
+
+  if (!open) {
     return (
-      <Card style={{ alignItems: 'center', gap: 4 }}>
-        <Text weight="bold" size={18} style={{ textAlign: 'center' }}>{user ? "You're already subscribed!" : 'Thank you for subscribing!'}</Text>
-        <Text size={14} color={C.muted} style={{ textAlign: 'center' }}>You will receive notifications when our menus are uploaded.</Text>
-      </Card>
+      <Pressable
+        onPress={toggle}
+        accessibilityRole="button"
+        accessibilityLabel="Get menu alerts"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm, minHeight: 44, paddingHorizontal: S.md, borderRadius: R.md, backgroundColor: C.cream, borderWidth: 1, borderColor: C.creamLine }}
+      >
+        <Ionicons name="notifications-outline" size={18} color={C.brandDark} />
+        <Text weight="semibold" size={14} style={{ flex: 1 }} numberOfLines={1}>Get menu alerts</Text>
+        <Text weight="semibold" size={13} color={C.brandDark}>Subscribe</Text>
+        <Ionicons name="chevron-down" size={16} color={C.brandDark} />
+      </Pressable>
     );
   }
 
   return (
-    <Card style={{ gap: 10, padding: 14 }}>
-      <Text weight="bold" size={16} style={{ textAlign: 'center' }}>Get notified as soon as our menu&apos;s are uploaded</Text>
+    <View style={{ gap: 10, padding: 14, borderRadius: R.lg, backgroundColor: C.white, borderWidth: 1, borderColor: C.creamLine }}>
+      <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10} style={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
+        <Ionicons name="chevron-up" size={18} color={C.muted} />
+      </Pressable>
+      <Text weight="bold" size={16} style={{ textAlign: 'center', paddingHorizontal: 18 }}>Get notified as soon as our menu&apos;s are uploaded</Text>
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'stretch' }}>
         <TextInput
           testID="subscribe-email"
@@ -110,12 +130,13 @@ export default function MenuSubscribe() {
           autoCorrect={false}
           autoComplete="email"
           returnKeyType="send"
+          maxFontSizeMultiplier={1.3}
           onSubmitEditing={submit}
-          style={{ flex: 1, height: 46, borderRadius: R.md, borderWidth: 1.5, borderColor: error && !/agree/i.test(error) ? C.red : C.line, backgroundColor: C.white, paddingHorizontal: 12, fontSize: 16, color: C.text }}
+          style={{ flex: 1, minWidth: 0, height: 46, borderRadius: R.md, borderWidth: 1.5, borderColor: emailError ? C.red : C.line, backgroundColor: C.white, paddingHorizontal: 12, fontSize: 16, color: C.text }}
         />
         <Button label="Subscribe" onPress={submit} loading={loading} small />
       </View>
-      {error && !/agree/i.test(error) ? <Text size={13} color={C.red}>{error}</Text> : null}
+      {emailError ? <Text size={13} color={C.red}>{emailError}</Text> : null}
       <Pressable
         testID="subscribe-consent"
         onPress={() => {
@@ -133,7 +154,7 @@ export default function MenuSubscribe() {
         </View>
         <Text size={13} style={{ flex: 1 }}>I want to subscribe to your mailing list.</Text>
       </Pressable>
-      {error && /agree/i.test(error) ? <Text size={13} color={C.red}>{error}</Text> : null}
-    </Card>
+      {consentError ? <Text size={13} color={C.red}>{consentError}</Text> : null}
+    </View>
   );
 }

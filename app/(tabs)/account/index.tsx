@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
@@ -15,6 +16,21 @@ import * as localCart from '@/lib/localStorageCart';
 
 type Row = { at: string; amount: number; type: 'issued' | 'used' | 'restored' | 'adjusted'; orderId?: string; note?: string; items?: Array<{ name: string; quantity: number; amount: number }> };
 const LABEL: Record<Row['type'], string> = { issued: 'Credit added', used: 'Used on an order', restored: 'Credit returned', adjusted: 'Adjustment' };
+
+/** The website's own pages (terms, privacy, help), shown inside the app. */
+const openPage = (path: string) => void WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
+
+function Legal() {
+  return (
+    <Card style={{ paddingVertical: S.xs }}>
+      <Item icon="document-text-outline" label="Terms" onPress={() => openPage('/terms')} />
+      <Divider />
+      <Item icon="shield-checkmark-outline" label="Privacy" onPress={() => openPage('/privacy')} />
+      <Divider />
+      <Item icon="help-circle-outline" label="Help and FAQ" onPress={() => openPage('/faqs')} />
+    </Card>
+  );
+}
 
 function Item({ icon, label, onPress, value, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; value?: string; danger?: boolean }) {
   return (
@@ -75,6 +91,9 @@ export default function Account() {
           </View>
           <Button label="Log in" onPress={() => router.push('/login')} />
           <Button label="Create account" variant="outline" onPress={() => router.push('/signup')} />
+          <View style={{ marginTop: S.xl }}>
+            <Legal />
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -165,7 +184,7 @@ export default function Account() {
           </View>
           <View style={{ flex: 1 }}>
             <Text weight="bold" size={18} numberOfLines={1}>{user.name}</Text>
-            <Text size={14} color={C.muted} numberOfLines={1}>{user.email}</Text>
+            <Text size={14} color={C.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{user.email}</Text>
             {!!user.phone && <Text size={14} color={C.muted}>{user.phone}</Text>}
           </View>
           <Pressable onPress={openEdit} hitSlop={10} accessibilityLabel="Edit profile"><Ionicons name="create-outline" size={22} color={C.body} /></Pressable>
@@ -190,13 +209,7 @@ export default function Account() {
           <Item icon="lock-closed-outline" label="Change password" onPress={() => { setErr(''); setPwOpen(true); }} />
         </Card>
 
-        <Card style={{ paddingVertical: S.xs }}>
-          <Item icon="document-text-outline" label="Terms" onPress={() => Linking.openURL(`${SITE_URL}/terms`)} />
-          <Divider />
-          <Item icon="shield-checkmark-outline" label="Privacy" onPress={() => Linking.openURL(`${SITE_URL}/privacy`)} />
-          <Divider />
-          <Item icon="help-circle-outline" label="Help and FAQ" onPress={() => Linking.openURL(`${SITE_URL}/faqs`)} />
-        </Card>
+        <Legal />
 
         <Card style={{ paddingVertical: S.xs }}>
           <Item icon="log-out-outline" label="Log out" onPress={signOut} />

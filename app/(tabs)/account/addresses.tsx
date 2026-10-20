@@ -68,7 +68,15 @@ export default function Addresses() {
                 </View>
               </View>
               <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
-                <Button small variant={on ? 'primary' : 'outline'} label={on ? 'Delivering here' : 'Deliver here'} onPress={() => void updateAddress(id).then(() => toast('Delivery address set')).catch(() => toast('Could not select that address', 'error'))} style={{ flex: 1 }} />
+                {on ? (
+                  // the address in use is a status, not a button
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40 }}>
+                    <Ionicons name="checkmark-circle" size={20} color={C.green} />
+                    <Text weight="semibold" size={14} color={C.green}>Delivering here</Text>
+                  </View>
+                ) : (
+                  <Button small variant="outline" label="Deliver here" onPress={() => void updateAddress(id).then(() => toast('Delivery address set')).catch(() => toast('Could not select that address', 'error'))} style={{ flex: 1 }} />
+                )}
                 <Button small variant="outline" label="Edit" onPress={() => setEditing(a)} />
                 <Pressable onPress={() => remove(a)} hitSlop={8} accessibilityLabel="Delete address" style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="trash-outline" size={20} color={C.red} />

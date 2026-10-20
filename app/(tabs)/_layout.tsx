@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, FONT } from '@/constants/theme';
 import { Text } from '@/components/ui';
 import { useCart } from '@/contexts/CartContext';
 
 export default function TabLayout() {
   const { itemCount } = useCart();
+  const insets = useSafeAreaInsets();
   const tab = (name: string, title: string, icon: keyof typeof Ionicons.glyphMap, iconOn: keyof typeof Ionicons.glyphMap, badge?: number) => (
     <Tabs.Screen
       name={name}
@@ -25,7 +26,9 @@ export default function TabLayout() {
         tabBarActiveTintColor: C.text,
         tabBarInactiveTintColor: C.faint,
         tabBarLabelStyle: { fontFamily: FONT.semibold, fontSize: 11 },
-        tabBarStyle: { backgroundColor: C.white, borderTopColor: C.line, height: Platform.OS === 'ios' ? 88 : 64, paddingTop: 6 },
+        // 54 points of bar plus whatever the phone needs below (a home indicator), so a phone without one does not waste space
+        tabBarStyle: { backgroundColor: C.white, borderTopColor: C.line, height: 54 + insets.bottom, paddingTop: 6, paddingBottom: Math.max(insets.bottom, 6) },
+        tabBarAllowFontScaling: false,
       }}
     >
       {tab('index', 'Menu', 'restaurant-outline', 'restaurant')}

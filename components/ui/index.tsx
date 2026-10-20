@@ -20,8 +20,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { C, FONT, R, S, shadowSm } from '@/constants/theme';
 
 type Weight = 'regular' | 'medium' | 'semibold' | 'bold';
+/** Larger iPhone text sizes are respected, but only up to 130%, so headers and buttons never break apart. */
+export const MAX_FONT_SCALE = 1.3;
+
 export function Text({ weight = 'regular', size = 15, color = C.text, style, ...rest }: TextProps & { weight?: Weight; size?: number; color?: string }) {
-  return <RNText {...rest} style={[{ fontFamily: FONT[weight], fontSize: size, color, lineHeight: Math.round(size * 1.35) }, style]} />;
+  return <RNText maxFontSizeMultiplier={MAX_FONT_SCALE} {...rest} style={[{ fontFamily: FONT[weight], fontSize: size, color, lineHeight: Math.round(size * 1.35) }, style]} />;
 }
 
 export const tap = () => {
@@ -49,12 +52,14 @@ export function Button({
 }) {
   const bg = variant === 'primary' ? C.brand : variant === 'danger' ? C.red : 'transparent';
   const fg = variant === 'primary' ? C.onBrand : variant === 'danger' ? C.white : variant === 'outline' ? C.text : C.brandDark;
-  const off = disabled || loading;
+  // a button that is only busy keeps its colour and its words (with a spinner); a disabled one goes grey
+  const off = Boolean(disabled) && !loading;
+  const busy = Boolean(loading);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      disabled={off}
+      disabled={off || busy}
       onPress={() => {
         tap();
         onPress?.();
@@ -76,8 +81,8 @@ export function Button({
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={off && variant === 'primary' ? '#9CA3AF' : fg} /> : null}
-      {!loading && <Text weight="semibold" size={small ? 14 : 16} color={off && variant === 'primary' ? '#9CA3AF' : fg}>{label}</Text>}
+      {busy ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={off && variant === 'primary' ? '#9CA3AF' : fg} /> : null}
+      <Text weight="semibold" size={small ? 14 : 16} color={off && variant === 'primary' ? '#9CA3AF' : fg}>{label}</Text>
     </Pressable>
   );
 }
@@ -149,6 +154,7 @@ export function Sheet({
   children,
   footer,
   full,
+  scrollRef,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -156,6 +162,8 @@ export function Sheet({
   children: React.ReactNode;
   footer?: React.ReactNode;
   full?: boolean;
+  /** lets the sheet's content be scrolled from outside (for example to the section that still needs a choice) */
+  scrollRef?: React.RefObject<ScrollView | null>;
 }) {
   const insets = useSafeAreaInsets();
   return (
@@ -182,7 +190,7 @@ export function Sheet({
               <Ionicons name="close" size={20} color={C.text} />
             </Pressable>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
+          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
             {children}
           </ScrollView>
           {footer ? (

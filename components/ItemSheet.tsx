@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { C, R, S } from '@/constants/theme';
@@ -76,9 +76,15 @@ export default function ItemSheet({
   const [spice, setSpice] = useState('');
   const [eco, setEco] = useState(false);
   const [combo, setCombo] = useState<Record<string, string[]>>({});
+  // what still needs a choice: the button names it, and pressing it scrolls to it
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionY = useRef<Record<string, number>>({});
+  const [showMissing, setShowMissing] = useState(false);
 
   useEffect(() => {
     if (!item) return;
+    setShowMissing(false);
+    sectionY.current = {};
     setPortion(0);
     setSpice('');
     setEco(false);
@@ -95,6 +101,15 @@ export default function ItemSheet({
 
   const spiceLevels = item.spiceLevel?.length ? item.spiceLevel : ['mild', 'normal', 'medium', 'Semi-Spicy', 'Super-Spicy'];
   const needSpice = Boolean(item.hasSpiceLevel && !spice.trim());
+  const missingSection = item.hasCombo ? item.sections?.find((s) => s.minSelection && (combo[s._id] ?? []).length < s.minSelection) : undefined;
+  const missing = needSpice ? { key: 'spice', label: 'Choose a spice level' } : missingSection ? { key: missingSection._id, label: `Choose ${missingSection.title}` } : null;
+  const goToMissing = () => {
+    if (!missing) return;
+    setShowMissing(true);
+    // a combo section's position is inside the combo block, so the block's own position is added
+    const base = missing.key === 'spice' ? 0 : sectionY.current.__combo ?? 0;
+    scrollRef.current?.scrollTo({ y: Math.max(base + (sectionY.current[missing.key] ?? 0) - 12, 0), animated: true });
+  };
 
   const pick = (section: ComboSection, id: string) => {
     const multi = !section.isRequired || (section.maxSelection !== undefined && section.maxSelection > 1);
@@ -144,11 +159,14 @@ export default function ItemSheet({
       visible
       onClose={onClose}
       title=""
+      scrollRef={scrollRef}
       footer={
         closedLabel ? (
           <Button label={closedLabel} disabled onPress={() => {}} />
+        ) : missing ? (
+          <Button label={missing.label} onPress={goToMissing} />
         ) : (
-          <Button label={`Add  ·  $${price.toFixed(2)}`} onPress={submit} disabled={needSpice} />
+          <Button label={`Add  ·  $${price.toFixed(2)}`} onPress={submit} />
         )
       }
     >
@@ -178,10 +196,10 @@ export default function ItemSheet({
       )}
 
       {item.hasSpiceLevel && (
-        <View style={{ marginTop: S.xl }}>
+        <View style={{ marginTop: S.xl }} onLayout={(e) => { sectionY.current.spice = e.nativeEvent.layout.y; }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <Text weight="bold" size={16} style={{ marginBottom: S.sm }}>Spice level</Text>
-            <Text size={13} color={C.red}>Required</Text>
+            <Text size={13} weight={showMissing && needSpice ? 'bold' : 'regular'} color={C.red}>{showMissing && needSpice ? 'Pick one' : 'Required'}</Text>
           </View>
           {spiceLevels.map((level) => {
             const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
@@ -207,16 +225,16 @@ export default function ItemSheet({
       )}
 
       {item.hasCombo && !!item.sections?.length && (
-        <View style={{ marginTop: S.xl }}>
+        <View style={{ marginTop: S.xl }} onLayout={(e) => { sectionY.current.__combo = e.nativeEvent.layout.y; }}>
           <Text weight="bold" size={18} style={{ marginBottom: S.sm }}>Build your combo</Text>
           {item.sections.map((section) => {
             const multi = !section.isRequired || (section.maxSelection !== undefined && section.maxSelection > 1);
             const chosen = combo[section._id] ?? [];
             return (
-              <View key={section._id} style={{ marginBottom: S.lg }}>
+              <View key={section._id} style={{ marginBottom: S.lg }} onLayout={(e) => { sectionY.current[section._id] = e.nativeEvent.layout.y; }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: S.sm }}>
                   <Text weight="semibold" size={15}>{section.title}</Text>
-                  <Text size={13} color={C.muted}>{sectionHint(section)}</Text>
+                  <Text size={13} weight={showMissing && missingSection?._id === section._id ? 'bold' : 'regular'} color={showMissing && missingSection?._id === section._id ? C.red : C.muted}>{sectionHint(section)}</Text>
                 </View>
                 {section.selectedItems.map((si) => (
                   <Row

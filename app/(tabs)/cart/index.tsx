@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +43,14 @@ export default function CartScreen() {
   const message = hasAddress ? getCheckoutMessage(cart.days, zipcodeConfig?.minCartValue || DEFAULT_MIN_CART_VALUE) : '';
   const fees = taxesAndFeesOf({ taxes: cart.tax, platformFee: cart.platformFee, deliveryFee: cart.deliveryFee });
   const canCheckout = Boolean(cart.canCheckout && hasAddress);
+  // when a day already says what is missing ("Add $15.00 worth of items"), the same words are not repeated at the bottom
+  const needsMore = cart.days.some((d) => /min/i.test(d.deliveryMessage?.message ?? '')) || /minimum/i.test(message);
+  const dayExplains = cart.days.some((d) => d.deliveryMessage && d.deliveryMessage.type !== 'success');
+  const confirmRemove = (id: string, name: string) =>
+    Alert.alert('Remove from cart?', name, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => void removeCartItem(id) },
+    ]);
 
   const go = () => {
     if (!user) {
@@ -74,7 +82,7 @@ export default function CartScreen() {
                   item={item}
                   onPlus={() => void updateCartItem({ cartItemId: item._id, quantity: item.quantity + 1 })}
                   onMinus={() => (item.quantity <= 1 ? void removeCartItem(item._id) : void updateCartItem({ cartItemId: item._id, quantity: item.quantity - 1 }))}
-                  onRemove={() => void removeCartItem(item._id)}
+                  onRemove={() => confirmRemove(item._id, item.foodItem.name)}
                 />
               </View>
             ))}
@@ -102,7 +110,7 @@ export default function CartScreen() {
           </View>
         </Card>
 
-        {!!message && (
+        {!!message && !dayExplains && (
           <View style={{ padding: S.md, borderRadius: R.md, backgroundColor: C.amberBg, flexDirection: 'row', gap: S.sm }}>
             <Ionicons name="alert-circle" size={18} color="#B45309" style={{ marginTop: 1 }} />
             <Text size={14} color={C.body} style={{ flex: 1 }}>{message}</Text>
@@ -112,7 +120,18 @@ export default function CartScreen() {
       </ScrollView>
 
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: S.lg, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line }}>
-        <Button label={user ? `Checkout  ·  $${cart.totalAmount.toFixed(2)}` : 'Log in to check out'} disabled={user ? !canCheckout : false} onPress={go} />
+        {!user ? (
+          <Button label="Log in to check out" onPress={go} />
+        ) : !hasAddress ? (
+          <Button label="Choose a delivery address first" disabled onPress={go} />
+        ) : !canCheckout && needsMore ? (
+          // the minimum is not reached: the button says so and takes you back to the menu to add more
+          <Button label="Add more items" icon="add" onPress={() => router.navigate('/')} />
+        ) : !canCheckout ? (
+          <Button label="Fix the items above to check out" disabled onPress={go} />
+        ) : (
+          <Button label={`Checkout  ·  $${cart.totalAmount.toFixed(2)}`} onPress={go} />
+        )}
       </View>
     </SafeAreaView>
   );

@@ -15,6 +15,7 @@ export default function Field({ label, error, secure, right, ...rest }: TextInpu
         <TextInput
           autoCorrect={false}
           spellCheck={false}
+          maxFontSizeMultiplier={1.3}
           {...rest}
           secureTextEntry={secure ? hidden : false}
           onFocus={(e) => {

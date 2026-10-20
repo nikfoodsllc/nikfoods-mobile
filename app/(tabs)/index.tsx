@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Switch, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Switch, View } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CartBar from '@/components/CartBar';
@@ -43,7 +43,6 @@ type Row =
 const logo = require('../../assets/images/nikfoods-logo.png');
 
 export default function Menu() {
-  const { width } = useWindowDimensions();
   const toast = useToast();
   const { refreshCart, cart } = useCart();
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
@@ -58,8 +57,6 @@ export default function Menu() {
     setVegOnlyState(v);
     localStorage.setItem('vegOnly', v ? '1' : '0');
   };
-
-  const cardWidth = Math.floor((width - S.lg * 2 - S.md) / 2);
 
   // ---- cart helpers (same rules as the website's home page) ----
   const dayOf = (date: string) => availableDates.find((d) => d.date === date);
@@ -253,17 +250,17 @@ export default function Menu() {
 
   const renderChips = () => (
     <View style={{ backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: S.md, gap: S.lg }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: S.sm, gap: S.md }}>
         {[{ _id: '', name: 'All', imageUrl: '' }, ...categories].map((c) => {
           const on = selectedCategory === c._id;
           return (
-            <Pressable key={c._id || 'all'} onPress={() => { tap(); setSelectedCategory(c._id); }} accessibilityRole="button" accessibilityLabel={c.name} style={{ alignItems: 'center', width: 68 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2.5, borderColor: on ? C.brand : 'transparent', padding: 2 }}>
-                <View style={{ flex: 1, borderRadius: 26, overflow: 'hidden', backgroundColor: on && !c._id ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable key={c._id || 'all'} onPress={() => { tap(); setSelectedCategory(c._id); }} accessibilityRole="button" accessibilityLabel={c.name} style={{ alignItems: 'center', width: 62 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, borderColor: on ? C.brand : 'transparent', padding: 2 }}>
+                <View style={{ flex: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: on && !c._id ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>
                   {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text weight="bold" size={15} color={on ? C.onBrand : C.body}>All</Text>}
                 </View>
               </View>
-              <Text weight={on ? 'bold' : 'medium'} size={12} color={on ? C.text : C.muted} numberOfLines={2} style={{ marginTop: 6, textAlign: 'center' }}>{c.name}</Text>
+              <Text weight={on ? 'bold' : 'medium'} size={11} color={on ? C.text : C.muted} numberOfLines={2} maxFontSizeMultiplier={1.1} style={{ marginTop: 4, textAlign: 'center' }}>{c.name}</Text>
             </Pressable>
           );
         })}
@@ -303,7 +300,7 @@ export default function Menu() {
         );
       case 'pair':
         return (
-          <View style={{ flexDirection: 'row', gap: S.md, paddingHorizontal: S.lg, marginBottom: S.md }}>
+          <View style={{ gap: S.md, paddingHorizontal: S.lg, marginBottom: S.md }}>
             {row.cells.map(({ item, dayGroup }) => {
               const inCart = quantityOf(item._id, dayGroup?.date);
               const custom = isFoodCustomizable(item);
@@ -313,7 +310,6 @@ export default function Menu() {
               return (
                 <FoodCard
                   key={`${item._id}-${dayGroup?.date ?? 'f'}`}
-                  width={cardWidth}
                   name={item.name}
                   imageUrl={item.url}
                   price={price}
@@ -331,7 +327,6 @@ export default function Menu() {
                 />
               );
             })}
-            {row.cells.length === 1 && <View style={{ width: cardWidth }} />}
           </View>
         );
       case 'empty':
@@ -340,11 +335,11 @@ export default function Menu() {
   };
 
   const header = (
-    <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.lg, gap: S.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Image source={logo} style={{ width: 128, height: 36 }} contentFit="contain" accessibilityLabel="NikFoods" />
+    <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.md, gap: S.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.md }}>
+        <Image source={logo} style={{ width: 128, height: 36, flexShrink: 0 }} contentFit="contain" accessibilityLabel="NikFoods" />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
-          <Text weight="semibold" size={14} color={C.body}>Veg only</Text>
+          <Text weight="semibold" size={14} color={C.body} maxFontSizeMultiplier={1.1}>Veg only</Text>
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E5E7EB' }} accessibilityLabel="Veg only" />
         </View>
       </View>
@@ -357,9 +352,9 @@ export default function Menu() {
     return (
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
         {header}
-        <View style={{ padding: S.lg, flexDirection: 'row', flexWrap: 'wrap', gap: S.md }}>
+        <View style={{ padding: S.lg, gap: S.md }}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={{ width: cardWidth, height: 250, borderRadius: R.xl, backgroundColor: C.surface }} />
+            <View key={i} style={{ height: 108, borderRadius: R.xl, backgroundColor: C.surface }} />
           ))}
         </View>
       </SafeAreaView>
