@@ -37,7 +37,8 @@ export default function NotificationSettings() {
     try {
       const r = await authenticatedFetch('/api/push/preferences');
       const j = await r.json();
-      if (r.ok && j.data) setPrefs({ orders: Boolean(j.data.orders), menu: Boolean(j.data.menu), reminders: Boolean(j.data.reminders) });
+      // menu alerts count as ON only when the email is really on the menu alerts list (the site's default is on, but nobody was added)
+      if (r.ok && j.data) setPrefs({ orders: Boolean(j.data.orders), menu: Boolean(j.data.menu) && Boolean(j.data.menuSubscribed), reminders: Boolean(j.data.reminders) });
     } catch {
       // the switches stay hidden until they load
     }
