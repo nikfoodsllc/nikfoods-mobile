@@ -11,8 +11,10 @@ import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAddresses } from '@/lib/useAddresses';
 import { IAddress } from '@/types/auth';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function Addresses() {
+  const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
   const { authenticatedFetch } = useApiClient();
@@ -48,9 +50,9 @@ export default function Addresses() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
-        <Text weight="bold" size={22} style={{ marginLeft: S.md }}>Addresses</Text>
+        <Text weight="display" size={32} style={{ marginLeft: S.md }}>Addresses</Text>
       </View>
-      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.md, paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.md, paddingBottom: bottomSpace }}>
         {addresses.length === 0 && <Text color={C.muted} style={{ textAlign: 'center', marginTop: S.xl }}>No saved addresses yet</Text>}
         {addresses.map((a) => {
           const id = a._id?.toString() ?? '';

@@ -12,8 +12,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { DEFAULT_MIN_CART_VALUE, getCheckoutMessage } from '@/lib/cartLogic';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function CartScreen() {
+  const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
   const { user } = useAuth();
@@ -62,8 +64,8 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: 160, gap: S.lg }} showsVerticalScrollIndicator={false}>
-        <Text weight="bold" size={30}>Cart</Text>
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace, gap: S.lg }} showsVerticalScrollIndicator={false}>
+        <Text weight="display" size={44}>Cart</Text>
         <DeliveryBar />
 
         {cart.days.map((day) => (

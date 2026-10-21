@@ -40,7 +40,7 @@ export default function CheckoutSuccess() {
             <Ionicons name="checkmark" size={42} color={C.white} />
           </View>
         </View>
-        <Text weight="bold" size={28} style={{ marginTop: S.xl }}>Order placed</Text>
+        <Text weight="display" size={42} style={{ marginTop: S.xl }}>Order placed</Text>
         <Text size={15} color={C.muted} style={{ marginTop: 6, textAlign: 'center' }}>We emailed your confirmation.</Text>
         <Text weight="semibold" size={14} color={C.body} style={{ marginTop: S.md }}>{String(orderId).startsWith('#') ? orderId : `#${orderId}`}</Text>
 

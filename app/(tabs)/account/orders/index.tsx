@@ -13,8 +13,10 @@ import { useApiClient } from '@/hooks/useApiClient';
 import { formatOrderDate } from '@/lib/orderHelpers';
 import { getNetTotal, getRefundedAmount } from '@/lib/orderRefunds';
 import { Order } from '@/types/order';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function Orders() {
+  const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const { user } = useAuth();
   const { authenticatedFetch } = useApiClient();
@@ -81,7 +83,7 @@ export default function Orders() {
       <FlatList
         data={orders}
         keyExtractor={(o) => o.orderId}
-        contentContainerStyle={{ padding: S.lg, paddingBottom: 40, gap: S.md }}
+        contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace, gap: S.md }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={{ gap: S.md, marginBottom: S.sm }}>
@@ -89,7 +91,7 @@ export default function Orders() {
               <Pressable onPress={() => (router.canGoBack() ? router.back() : router.navigate('/account'))} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="chevron-back" size={22} color={C.text} />
               </Pressable>
-              <Text weight="bold" size={30}>Orders</Text>
+              <Text weight="display" size={40}>Orders</Text>
             </View>
             <SearchField value={query} onChangeText={setQuery} placeholder="Search orders" />
           </View>

@@ -1,3 +1,4 @@
+import { CormorantGaramond_600SemiBold, CormorantGaramond_700Bold } from '@expo-google-fonts/cormorant-garamond';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -17,6 +18,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { routeForIncomingLink } from '@/lib/deepLink';
 import { configureNotifications } from '@/lib/push';
+import { prefetchMenu } from '@/lib/useHomeMenu';
 import { initRuntime, onRedirect } from '@/lib/runtime';
 
 export { ErrorBoundary } from 'expo-router';
@@ -25,13 +27,16 @@ SplashScreen.preventAutoHideAsync();
 configureNotifications();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, ...Ionicons.font, ...FontAwesome.font });
+  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, CormorantGaramond_600SemiBold, CormorantGaramond_700Bold, ...Ionicons.font, ...FontAwesome.font });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     initRuntime()
       .catch((e) => console.warn('runtime init failed', e))
-      .finally(() => setReady(true));
+      .finally(() => {
+        setReady(true);
+        prefetchMenu(); // the menu is ready by the time someone opens it
+      });
   }, []);
 
   useEffect(() => {

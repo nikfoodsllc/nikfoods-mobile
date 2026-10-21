@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import CartBar from '@/components/CartBar';
 import DaySheet, { DaySelection } from '@/components/DaySheet';
 import FoodCard from '@/components/FoodCard';
@@ -27,6 +27,7 @@ import { useVegOnly } from '@/lib/vegOnly';
 import { DayType } from '@/types/cart';
 import { FoodItem } from '@/types/food';
 import { CartCustomizations } from '@/types/localCart';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 type DayGroup = CategoryDisplay['dayGroups'][number];
 type Cell = { item: FoodItem; dayGroup?: DayGroup };
@@ -45,6 +46,7 @@ type DatesRow = Extract<Row, { type: 'dates' }>;
  * Used by the Menu tab: the category page passes categoryId, the search passes query. The parent draws the page title / search box.
  */
 export default function MenuBrowser({ categoryId = '', query = '', stickyTop = null, header = null }: { categoryId?: string; query?: string; stickyTop?: React.ReactNode; header?: React.ReactElement | null }) {
+  const bottomSpace = useTabBarSpace(true);
   const toast = useToast();
   const { refreshCart, cart } = useCart();
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
@@ -344,11 +346,11 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         {stickyTop}
       </View>
       {stickyRow && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ borderTopWidth: 1, borderTopColor: C.line }} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: 6, gap: S.sm }} keyboardShouldPersistTaps="handled">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: C.bg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line }} contentContainerStyle={{ paddingHorizontal: S.xl, paddingVertical: 8, gap: S.sm }} keyboardShouldPersistTaps="handled">
           {stickyRow.dates.map((d) => {
             const on = d.date === stickyRow.selected;
             return (
-              <Pressable key={d.date} onPress={() => pickDate(stickyRow.catId, d.date)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 34, paddingHorizontal: 14, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
+              <Pressable key={d.date} onPress={() => pickDate(stickyRow.catId, d.date)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 34, paddingHorizontal: 14, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.ink : C.surface }}>
                 <Text weight="semibold" size={13} color={on ? C.white : C.body} maxFontSizeMultiplier={1.1}>{d.label}</Text>
               </Pressable>
             );
@@ -364,26 +366,26 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         return renderChips();
       case 'cat':
         return (
-          <View style={{ paddingHorizontal: S.lg, paddingTop: S.xl, paddingBottom: S.md }}>
-            <Text weight="bold" size={24}>{row.name}</Text>
+          <View style={{ paddingHorizontal: S.xl, paddingTop: S.xl, paddingBottom: S.md }}>
+            <Text weight="display" size={32}>{row.name}</Text>
           </View>
         );
       case 'sub':
         return (
-          <View style={{ paddingHorizontal: S.lg, paddingTop: S.lg, paddingBottom: S.md, flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
-            <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: C.brand }} />
-            <Text weight="semibold" size={17} color={C.brandDark}>{row.name}</Text>
+          <View style={{ paddingHorizontal: S.xl, paddingTop: S.xl, paddingBottom: S.md, flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+            <Text weight="display" size={28}>{row.name}</Text>
+            <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.gold, opacity: 0.6 }} />
           </View>
         );
       case 'dates':
         return (
           <View ref={(v) => { datesViews.current.set(row.key, v); }} collapsable={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.lg, gap: S.sm, paddingBottom: S.md }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.xl, gap: S.sm, paddingBottom: S.md }}>
             {row.dates.map((d) => {
               const on = d.date === row.selected;
               return (
-                <Pressable key={d.date} onPress={() => pickDate(row.catId, d.date)} style={{ height: 40, paddingHorizontal: 16, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
-                  <Text weight="semibold" size={14} color={on ? C.white : C.body}>{d.label}</Text>
+                <Pressable key={d.date} onPress={() => pickDate(row.catId, d.date)} style={{ height: 42, paddingHorizontal: 18, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.ink : C.white, borderWidth: StyleSheet.hairlineWidth, borderColor: on ? C.ink : C.line }}>
+                  <Text weight="semibold" size={14} color={on ? C.ivory : C.body}>{d.label}</Text>
                 </Pressable>
               );
             })}
@@ -392,7 +394,7 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         );
       case 'pair':
         return (
-          <View style={{ gap: S.md, paddingHorizontal: S.lg, marginBottom: S.md }}>
+          <View style={{ gap: S.md, paddingHorizontal: S.xl, marginBottom: S.md }}>
             {row.cells.map(({ item, dayGroup }) => {
               const inCart = quantityOf(item._id, dayGroup?.date);
               const custom = isFoodCustomizable(item);
@@ -464,7 +466,7 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         ListHeaderComponent={header}
         stickyHeaderIndices={header ? [1] : [0]}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: bottomSpace }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
         showsVerticalScrollIndicator={false}
         initialNumToRender={8}

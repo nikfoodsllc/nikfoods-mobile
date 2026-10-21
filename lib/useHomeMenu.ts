@@ -41,6 +41,11 @@ function loadMenu(force: boolean): Promise<Loaded> {
   return inflight;
 }
 
+/** Starts loading the menu in the background (does nothing if it is fresh or already loading). */
+export function prefetchMenu(): void {
+  void loadMenu(false).catch(() => undefined);
+}
+
 /** Loads the menu the website shows: categories, their items, and the delivery days (one request, same as the site). */
 export function useHomeMenu() {
   const [state, setState] = useState<Loaded | null>(cached);

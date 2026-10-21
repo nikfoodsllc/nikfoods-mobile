@@ -9,19 +9,28 @@ import DeliveryBar from '@/components/DeliveryBar';
 import DeliveryTracker from '@/components/DeliveryTracker';
 import MenuSubscribe from '@/components/MenuSubscribe';
 import { deliveryOf, StatusChip } from '@/components/OrderParts';
-import { Button, Card, Text, tap } from '@/components/ui';
-import { C, S } from '@/constants/theme';
+import Reveal from '@/components/Reveal';
+import { Button, Card, Eyebrow, Text, tap } from '@/components/ui';
+import { C, S, shadow } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { buildMenuSections, categoryOrSubsHaveItems } from '@/lib/homeMenu';
 import { useHomeMenu } from '@/lib/useHomeMenu';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { useVegOnly } from '@/lib/vegOnly';
 import { Order } from '@/types/order';
 
 const logo = require('../../assets/images/nikfoods-logo.png');
 
+/** "Good evening" by the hour (Pacific time, where the kitchen is). */
+function greetingNow(): string {
+  const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/Los_Angeles' }).format(new Date())) % 24;
+  return hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+}
+
 /** Home: where you are delivering, your next delivery, a way into the menu and the menu alerts. */
 export default function Home() {
+  const bottomSpace = useTabBarSpace(true);
   const router = useRouter();
   const { user } = useAuth();
   const { authenticatedFetch } = useApiClient();
@@ -57,63 +66,82 @@ export default function Home() {
     [categories, map, vegOnly, availableDates]
   );
   const first = (user?.name ?? '').trim().split(/\s+/)[0];
+  const nextDay = next ? next.items.slice().sort((a, b) => String(a.actualDeliveryDate || a.deliveryDate).localeCompare(String(b.actualDeliveryDate || b.deliveryDate)))[0] : null;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView
-        contentContainerStyle={{ padding: S.lg, paddingBottom: 140, gap: S.lg }}
+        contentContainerStyle={{ paddingHorizontal: S.xl, paddingTop: S.md, paddingBottom: bottomSpace, gap: S.xl + 4 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={async () => { setRefreshing(true); await Promise.all([reload(), loadNext()]); setRefreshing(false); }} />}
       >
-        <View>
-          <Image source={logo} style={{ width: 128, height: 36 }} contentFit="contain" accessibilityLabel="NikFoods" />
-          <Text weight="bold" size={28} style={{ marginTop: S.md }}>{first ? `Hi, ${first}` : 'Welcome'}</Text>
-        </View>
+        <Reveal index={0}>
+          <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
+          <Eyebrow style={{ marginTop: S.xl }}>{greetingNow()}</Eyebrow>
+          <Text weight="display" size={46} style={{ marginTop: 2 }}>{first ? `${first},` : 'Welcome,'}</Text>
+          <Text weight="display" size={46} color={C.brandDark}>what shall we cook?</Text>
+        </Reveal>
 
-        <DeliveryBar />
+        <Reveal index={1}>
+          <DeliveryBar />
+        </Reveal>
 
-        {next && (
-          <View style={{ gap: S.md }}>
+        {next && nextDay && (
+          <Reveal index={2} style={{ gap: S.md }}>
             <Pressable onPress={() => router.push({ pathname: '/account/orders/[id]', params: { id: next.orderId } })} accessibilityRole="button" accessibilityLabel="Your next delivery">
               <Card>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: S.md }}>
-                  <Text weight="bold" size={13} color={C.muted} style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>Your next delivery</Text>
+                  <Eyebrow color={C.muted}>Your next delivery</Eyebrow>
                   <StatusChip status={next.status} />
                 </View>
-                <Text weight="bold" size={22} style={{ marginTop: 6 }}>{deliveryOf(next.items.slice().sort((a, b) => String(a.actualDeliveryDate || a.deliveryDate).localeCompare(String(b.actualDeliveryDate || b.deliveryDate)))[0])}</Text>
+                <Text weight="display" size={34} style={{ marginTop: 6 }}>{deliveryOf(nextDay)}</Text>
                 <Text size={14} color={C.muted} style={{ marginTop: 2 }}>{next.items.reduce((n, d) => n + d.items.reduce((m, it) => m + it.quantity, 0), 0)} items</Text>
               </Card>
             </Pressable>
             <DeliveryTracker orderId={next.orderId} />
-          </View>
+          </Reveal>
         )}
 
-        <Pressable onPress={() => { tap(); router.navigate('/menu'); }} accessibilityRole="button" accessibilityLabel="Order now" style={({ pressed }) => ({ backgroundColor: C.brand, borderRadius: 24, padding: S.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', opacity: pressed ? 0.85 : 1 })}>
-          <View style={{ flex: 1 }}>
-            <Text weight="bold" size={28} color={C.onBrand} style={{ textTransform: 'uppercase', letterSpacing: 0.4 }}>Order now</Text>
-            <Text size={15} color={C.onBrand} style={{ marginTop: 2 }}>See the menu</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={30} color={C.onBrand} />
-        </Pressable>
+        <Reveal index={3}>
+          <Pressable
+            onPress={() => { tap(); router.navigate('/menu'); }}
+            accessibilityRole="button"
+            accessibilityLabel="Order now"
+            style={({ pressed }) => [{ backgroundColor: C.ink, borderRadius: 34, paddingVertical: S.xl, paddingLeft: S.xl + 4, paddingRight: S.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', transform: [{ scale: pressed ? 0.985 : 1 }] }, shadow]}
+          >
+            <View style={{ flex: 1 }}>
+              <Eyebrow color={C.gold}>The menu</Eyebrow>
+              <Text weight="display" size={38} color={C.ivory} style={{ marginTop: 2 }}>Order now</Text>
+            </View>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="arrow-forward" size={26} color={C.onBrand} />
+            </View>
+          </Pressable>
+        </Reveal>
 
         {cats.length > 0 && (
-          <View style={{ gap: S.md }}>
-            <Text weight="bold" size={20}>Browse</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.lg, paddingRight: S.lg }}>
+          <Reveal index={4} style={{ gap: S.lg }}>
+            <View>
+              <Eyebrow>Browse</Eyebrow>
+              <Text weight="display" size={32} style={{ marginTop: 2 }}>By category</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -S.xl }} contentContainerStyle={{ gap: S.lg, paddingHorizontal: S.xl }}>
               {cats.map((c) => (
-                <Pressable key={c._id} onPress={() => { tap(); router.push({ pathname: '/menu/[id]', params: { id: c._id } }); }} accessibilityRole="button" accessibilityLabel={c.name} style={{ width: 92, alignItems: 'center' }}>
-                  <View style={{ width: 84, height: 84, borderRadius: 42, overflow: 'hidden', backgroundColor: C.surface }}>
-                    {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : null}
+                <Pressable key={c._id} onPress={() => { tap(); router.push({ pathname: '/menu/[id]', params: { id: c._id } }); }} accessibilityRole="button" accessibilityLabel={c.name} style={({ pressed }) => ({ width: 112, opacity: pressed ? 0.8 : 1 })}>
+                  <View style={[{ width: 112, height: 132, borderRadius: 56, overflow: 'hidden', backgroundColor: C.surface, borderWidth: 3, borderColor: C.white }, shadow]}>
+                    {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={250} /> : null}
                   </View>
-                  <Text weight="semibold" size={13} numberOfLines={2} maxFontSizeMultiplier={1.2} style={{ marginTop: 6, textAlign: 'center' }}>{c.name}</Text>
+                  <Text weight="semibold" size={14} numberOfLines={2} maxFontSizeMultiplier={1.2} style={{ marginTop: S.sm, textAlign: 'center' }}>{c.name}</Text>
                 </Pressable>
               ))}
             </ScrollView>
-          </View>
+          </Reveal>
         )}
 
-        <MenuSubscribe />
+        <Reveal index={5}>
+          <MenuSubscribe />
+        </Reveal>
 
         {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
       </ScrollView>

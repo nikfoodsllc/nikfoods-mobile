@@ -17,6 +17,7 @@ import { authenticate, isLockEnabled, lockSupport, setLockEnabled } from '@/lib/
 import { forgetFaceIdSignInHere, isFaceIdSignInOn, turnOffFaceIdSignIn, turnOnFaceIdSignIn } from '@/lib/deviceLogin';
 import { unregisterPush } from '@/lib/push';
 import * as localCart from '@/lib/localStorageCart';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 type Row = { at: string; amount: number; type: 'issued' | 'used' | 'restored' | 'adjusted'; orderId?: string; note?: string; items?: Array<{ name: string; quantity: number; amount: number }> };
 const LABEL: Record<Row['type'], string> = { issued: 'Credit added', used: 'Used on an order', restored: 'Credit returned', adjusted: 'Adjustment' };
@@ -51,6 +52,7 @@ function Item({ icon, label, onPress, value, danger }: { icon: keyof typeof Ioni
 }
 
 export default function Account() {
+  const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
   const { user, logout, updateUser } = useAuth();
@@ -214,8 +216,8 @@ export default function Account() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
-      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <Text weight="bold" size={30}>Profile</Text>
+      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>
+        <Text weight="display" size={44}>Profile</Text>
 
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>

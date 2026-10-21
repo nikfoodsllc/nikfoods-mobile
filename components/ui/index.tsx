@@ -19,12 +19,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, FONT, R, S, shadowSm } from '@/constants/theme';
 
-type Weight = 'regular' | 'medium' | 'semibold' | 'bold';
+type Weight = 'regular' | 'medium' | 'semibold' | 'bold' | 'display' | 'displayMedium';
 /** Larger iPhone text sizes are respected, but only up to 130%, so headers and buttons never break apart. */
 export const MAX_FONT_SCALE = 1.3;
 
 export function Text({ weight = 'regular', size = 15, color = C.text, style, ...rest }: TextProps & { weight?: Weight; size?: number; color?: string }) {
-  return <RNText maxFontSizeMultiplier={MAX_FONT_SCALE} {...rest} style={[{ fontFamily: FONT[weight], fontSize: size, color, lineHeight: Math.round(size * 1.35) }, style]} />;
+  // the display serif sets tighter and a touch smaller on the line
+  const display = weight === 'display' || weight === 'displayMedium';
+  return <RNText maxFontSizeMultiplier={MAX_FONT_SCALE} {...rest} style={[{ fontFamily: FONT[weight], fontSize: size, color, lineHeight: Math.round(size * (display ? 1.12 : 1.35)), ...(display ? { letterSpacing: -0.3 } : null) }, style]} />;
+}
+
+/** A tiny uppercase label above a heading. */
+export function Eyebrow({ children, color = C.brandDark, style }: { children: React.ReactNode; color?: string; style?: StyleProp<TextStyle> }) {
+  return <Text weight="semibold" size={11} color={color} style={[{ textTransform: 'uppercase', letterSpacing: 1.8 }, style]}>{children}</Text>;
 }
 
 export const tap = () => {
@@ -39,22 +46,29 @@ export function Button({
   loading,
   small,
   icon,
+  arrow,
   style,
 }: {
   label: string;
   onPress?: () => void;
-  variant?: 'primary' | 'outline' | 'ghost' | 'danger';
+  /** primary: espresso pill; accent: the gold pill (use rarely); outline / ghost / danger */
+  variant?: 'primary' | 'accent' | 'outline' | 'ghost' | 'danger';
   disabled?: boolean;
   loading?: boolean;
   small?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
+  /** a small gold circle with an arrow at the right end (the main call to action of a screen) */
+  arrow?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const bg = variant === 'primary' ? C.brand : variant === 'danger' ? C.red : 'transparent';
-  const fg = variant === 'primary' ? C.onBrand : variant === 'danger' ? C.white : variant === 'outline' ? C.text : C.brandDark;
-  // a button that is only busy keeps its colour and its words (with a spinner); a disabled one goes grey
+  const bg = variant === 'primary' ? C.ink : variant === 'accent' ? C.brand : variant === 'danger' ? C.red : 'transparent';
+  const fg = variant === 'primary' ? C.ivory : variant === 'accent' ? C.onBrand : variant === 'danger' ? C.white : variant === 'outline' ? C.text : C.brandDark;
+  // a button that is only busy keeps its colour and its words (with a spinner); a disabled one goes soft grey
   const off = Boolean(disabled) && !loading;
   const busy = Boolean(loading);
+  const solid = variant === 'primary' || variant === 'accent' || variant === 'danger';
+  const dim = off && solid;
+  const height = small ? 42 : 56;
   return (
     <Pressable
       accessibilityRole="button"
@@ -66,29 +80,47 @@ export function Button({
       }}
       style={({ pressed }) => [
         {
-          minHeight: small ? 40 : 52,
-          paddingHorizontal: small ? S.lg : S.xl,
-          borderRadius: R.md,
-          backgroundColor: off && variant === 'primary' ? '#E5E7EB' : bg,
-          borderWidth: variant === 'outline' ? 1.5 : 0,
-          borderColor: C.line,
+          minHeight: height,
+          paddingLeft: arrow && !small ? S.xl : small ? S.lg : S.xl,
+          paddingRight: arrow && !small ? 8 : small ? S.lg : S.xl,
+          borderRadius: R.pill,
+          backgroundColor: dim ? '#E7E1D8' : bg,
+          borderWidth: variant === 'outline' ? 1 : 0,
+          borderColor: variant === 'outline' ? 'rgba(26,20,16,0.18)' : 'transparent',
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: arrow && !small ? 'space-between' : 'center',
           gap: S.sm,
-          opacity: pressed ? 0.85 : 1,
+          opacity: pressed ? 0.92 : 1,
+          transform: [{ scale: pressed ? 0.985 : 1 }],
         },
+        solid && !dim ? shadowSm : null,
         style,
       ]}
     >
-      {busy ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={off && variant === 'primary' ? '#9CA3AF' : fg} /> : null}
-      <Text weight="semibold" size={small ? 14 : 16} color={off && variant === 'primary' ? '#9CA3AF' : fg}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
+        {busy ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={dim ? '#A39A90' : fg} /> : null}
+        <Text weight="semibold" size={small ? 14 : 16} color={dim ? '#A39A90' : fg} style={{ letterSpacing: 0.2 }}>{label}</Text>
+      </View>
+      {arrow && !small ? (
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: dim ? '#D9D2C7' : variant === 'accent' ? C.ink : C.brand, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="arrow-forward" size={19} color={variant === 'accent' ? C.ivory : C.onBrand} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
 
+/**
+ * A bezel card: a thin tray (paper-tinted, hairline edge) holding a white core with its own soft shadow, so it reads as a
+ * machined plate rather than a box on a page. `style` styles the white core.
+ */
 export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ backgroundColor: C.white, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: S.lg }, shadowSm, style]}>{children}</View>;
+  return (
+    <View style={{ backgroundColor: C.shell, borderRadius: R.xl + 4, padding: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line }}>
+      <View style={[{ backgroundColor: C.white, borderRadius: R.xl, padding: S.lg }, shadowSm, style]}>{children}</View>
+    </View>
+  );
 }
 
 export function Chip({ label, active, onPress, style, textStyle }: { label: string; active?: boolean; onPress?: () => void; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle> }) {
@@ -99,11 +131,11 @@ export function Chip({ label, active, onPress, style, textStyle }: { label: stri
         onPress?.();
       }}
       style={[
-        { paddingHorizontal: 16, height: 38, borderRadius: R.pill, justifyContent: 'center', backgroundColor: active ? C.brand : C.surface, borderWidth: 1, borderColor: active ? C.brand : C.line },
+        { paddingHorizontal: 16, height: 38, borderRadius: R.pill, justifyContent: 'center', backgroundColor: active ? C.ink : C.white, borderWidth: 1, borderColor: active ? C.ink : C.line },
         style,
       ]}
     >
-      <Text weight="semibold" size={14} color={active ? C.onBrand : C.body} style={textStyle}>{label}</Text>
+      <Text weight="semibold" size={14} color={active ? C.ivory : C.body} style={textStyle}>{label}</Text>
     </Pressable>
   );
 }
@@ -134,13 +166,13 @@ export function Stepper({ value, onMinus, onPlus, plusDisabled, compact }: { val
       accessibilityLabel={name === 'add' ? 'Add one' : 'Remove one'}
       style={{ width: h, height: h, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.4 : 1 }}
     >
-      <Ionicons name={name} size={compact ? 18 : 22} color={C.onBrand} />
+      <Ionicons name={name} size={compact ? 18 : 22} color={C.ivory} />
     </Pressable>
   );
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.brand, borderRadius: R.md, height: h }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.ink, borderRadius: R.pill, height: h }}>
       {btn('remove', onMinus)}
-      <Text weight="bold" size={compact ? 15 : 17} color={C.onBrand} style={{ minWidth: 26, textAlign: 'center' }}>{value}</Text>
+      <Text weight="bold" size={compact ? 15 : 17} color={C.ivory} style={{ minWidth: 26, textAlign: 'center' }}>{value}</Text>
       {btn('add', onPlus, plusDisabled)}
     </View>
   );
@@ -175,8 +207,8 @@ export function Sheet({
         <View
           style={{
             backgroundColor: C.white,
-            borderTopLeftRadius: R.xl,
-            borderTopRightRadius: R.xl,
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
             maxHeight: full ? '94%' : '88%',
             height: full ? '94%' : undefined,
             paddingBottom: footer ? 0 : insets.bottom,

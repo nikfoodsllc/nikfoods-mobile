@@ -21,12 +21,14 @@ import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '
 import { paymentIntentIdFromClientSecret, reportPaymentError } from '@/lib/checkout/reportPaymentError';
 import { planCreditForOrder, toCents, toDollars } from '@/lib/storeCredit';
 import { useAddresses } from '@/lib/useAddresses';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 const TIPS = [0, 5, 10, 15];
 const cleanInstructions = (v: string) => v.replace(/\s+/g, ' ').trim().slice(0, 30);
 const isCompleteAddress = (a?: { _id?: string; addressLine1?: string }) => Boolean(a && !a._id?.startsWith('zipcode-') && a.addressLine1 !== 'Delivery Area' && a.addressLine1 !== 'Delivery Area:');
 
 export default function Checkout() {
+  const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
   const { user } = useAuth();
@@ -362,11 +364,11 @@ export default function Checkout() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
-        <Text weight="bold" size={22} style={{ marginLeft: S.md }}>Checkout</Text>
+        <Text weight="display" size={32} style={{ marginLeft: S.md }}>Checkout</Text>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: S.lg, paddingBottom: 140, gap: S.lg }} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace, gap: S.lg }} showsVerticalScrollIndicator={false}>
           {!!closed && (
             <View style={{ padding: S.lg, borderRadius: R.lg, backgroundColor: C.redBg }}>
               <Text size={14} color={C.red} style={{ lineHeight: 21 }}>{closed}</Text>

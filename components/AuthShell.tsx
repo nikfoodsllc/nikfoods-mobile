@@ -21,7 +21,7 @@ export default function AuthShell({ title, subtitle, children }: { title: string
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: S.xl, paddingTop: 0 }}>
           <Image source={logo} style={{ width: 150, height: 42, marginBottom: S.xl }} contentFit="contain" />
-          <Text weight="bold" size={30}>{title}</Text>
+          <Text weight="display" size={40}>{title}</Text>
           {!!subtitle && <Text size={15} color={C.muted} style={{ marginTop: 6, marginBottom: S.xl }}>{subtitle}</Text>}
           {!subtitle && <View style={{ height: S.xl }} />}
           {children}

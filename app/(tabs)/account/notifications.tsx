@@ -8,6 +8,7 @@ import { Button, Card, Divider, Text, tap } from '@/components/ui';
 import { C, S } from '@/constants/theme';
 import { useApiClient } from '@/hooks/useApiClient';
 import { askForPush, openPhoneSettings, pushState, registerPush, type PushState } from '@/lib/push';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 interface Prefs {
   orders: boolean;
@@ -22,6 +23,7 @@ const ROWS: Array<{ key: keyof Prefs; label: string; hint: string }> = [
 ];
 
 export default function NotificationSettings() {
+  const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
   const { authenticatedFetch } = useApiClient();
@@ -80,9 +82,9 @@ export default function NotificationSettings() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
-        <Text weight="bold" size={22} style={{ marginLeft: S.md }}>Notifications</Text>
+        <Text weight="display" size={32} style={{ marginLeft: S.md }}>Notifications</Text>
       </View>
-      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: bottomSpace }}>
         {state === 'undetermined' && (
           <Card style={{ gap: S.md }}>
             <Text weight="bold" size={17}>Get updates on your phone</Text>

@@ -14,8 +14,10 @@ import { formatOrderDate } from '@/lib/orderHelpers';
 import { getNetTotal, getRefundedAmount } from '@/lib/orderRefunds';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
 import { Order } from '@/types/order';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function OrderDetail() {
+  const bottomSpace = useTabBarSpace(false);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -94,9 +96,9 @@ export default function OrderDetail() {
         <Pressable onPress={() => router.navigate('/account/orders')} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
-        <Text weight="bold" size={22} style={{ marginLeft: S.md }}>Order</Text>
+        <Text weight="display" size={32} style={{ marginLeft: S.md }}>Order</Text>
       </View>
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>{body()}</ScrollView>
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>{body()}</ScrollView>
     </SafeAreaView>
   );
 }

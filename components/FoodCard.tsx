@@ -1,14 +1,15 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { C, R, S, shadow } from '@/constants/theme';
-import { Button, Stepper, Text, VegDot } from '@/components/ui';
+import { C, R, S, shadowSm } from '@/constants/theme';
+import { Stepper, Text, VegDot, tap } from '@/components/ui';
 
-const IMAGE = 84;
+const IMAGE = 92;
 
 /**
- * One dish as a full-width row: a small round photo, the whole name (up to three lines, so a combo's day is never cut off),
- * the price, and Add / the quantity stepper on the same line. About five dishes fit on a screen instead of two.
+ * One dish: a soft white card with a rounded-square photo, the whole name (up to three lines, so a combo's day is never cut off),
+ * the price in gold, and a round Add button (or the quantity stepper) at the end.
  */
 export default function FoodCard({
   name,
@@ -43,28 +44,28 @@ export default function FoodCard({
 }) {
   const off = !available || closed;
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: S.md, backgroundColor: C.white, borderRadius: R.xl, padding: S.md }, shadow]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: S.md, backgroundColor: C.white, borderRadius: R.xl, padding: S.md, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line }, shadowSm]}>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${name}, details`} style={{ width: IMAGE, height: IMAGE }}>
-        <View style={{ width: IMAGE, height: IMAGE, borderRadius: IMAGE / 2, overflow: 'hidden', backgroundColor: C.surface }}>
-          <Image source={imageUrl ? { uri: imageUrl } : undefined} style={{ width: '100%', height: '100%', opacity: off ? 0.45 : 1 }} contentFit="cover" transition={150} />
+        <View style={{ width: IMAGE, height: IMAGE, borderRadius: 24, overflow: 'hidden', backgroundColor: C.surface }}>
+          <Image source={imageUrl ? { uri: imageUrl } : undefined} style={{ width: '100%', height: '100%', opacity: off ? 0.45 : 1 }} contentFit="cover" transition={200} />
         </View>
-        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 6, left: 6 }}>
           <VegDot veg={veg} size={16} />
         </View>
         {inCartCount > 0 && customizable && (
-          <View pointerEvents="none" style={{ position: 'absolute', top: -2, right: -2, minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 11, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
-            <Text weight="bold" size={12} color={C.onBrand}>{inCartCount}</Text>
+          <View pointerEvents="none" style={{ position: 'absolute', top: -3, right: -3, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.white }}>
+            <Text weight="bold" size={12} color={C.ivory}>{inCartCount}</Text>
           </View>
         )}
       </Pressable>
 
-      <View style={{ flex: 1, gap: 6 }}>
+      <View style={{ flex: 1, gap: 8 }}>
         <Pressable onPress={onPress} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Text weight="semibold" size={15} numberOfLines={3}>{name}</Text>
+          <Text weight="semibold" size={16} numberOfLines={3} style={{ color: C.text }}>{name}</Text>
         </Pressable>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.sm, minHeight: 40 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.sm, minHeight: 44 }}>
           {price != null ? (
-            <Text weight="bold" size={16} color={C.brandDark} style={{ flexShrink: 1 }}>
+            <Text weight="semibold" size={16} color={C.brandDark} style={{ flexShrink: 1 }}>
               {starting ? 'From ' : ''}${price.toFixed(2)}
             </Text>
           ) : (
@@ -75,7 +76,18 @@ export default function FoodCard({
           ) : quantity > 0 ? (
             <Stepper compact value={quantity} onMinus={onDecrement} onPlus={onIncrement} />
           ) : (
-            <Button small label={customizable && inCartCount > 0 ? 'Add more' : 'Add'} onPress={onAdd} style={{ minWidth: 84 }} />
+            <Pressable
+              onPress={() => {
+                tap();
+                onAdd();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={customizable && inCartCount > 0 ? 'Add more' : 'Add'}
+              hitSlop={6}
+              style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }] })}
+            >
+              <Ionicons name="add" size={24} color={C.brand} />
+            </Pressable>
           )}
         </View>
       </View>

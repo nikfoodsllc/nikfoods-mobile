@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { C, FONT, R, S, shadowSm } from '@/constants/theme';
@@ -64,10 +64,10 @@ export default function DeliveryBar() {
         }}
         accessibilityRole="button"
         accessibilityLabel="Change delivery location"
-        style={[{ flexDirection: 'row', alignItems: 'center', gap: S.md, backgroundColor: C.cream, borderWidth: 1, borderColor: C.creamLine, borderRadius: R.lg, paddingVertical: S.md, paddingHorizontal: S.md }]}
+        style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: S.md, backgroundColor: C.white, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line, borderRadius: R.pill, paddingVertical: 10, paddingLeft: 10, paddingRight: S.lg, opacity: pressed ? 0.9 : 1 }, shadowSm]}
       >
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="location" size={18} color={C.onBrand} />
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="location" size={18} color={C.brand} />
         </View>
         <View style={{ flex: 1 }}>
           <Text weight="semibold" size={15} numberOfLines={1}>{line}</Text>
