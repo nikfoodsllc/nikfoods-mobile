@@ -119,6 +119,8 @@ export default function Home() {
 
         {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
 
+        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic taste</Eyebrow>
+
       </Animated.ScrollView>
       <CartBar />
     </SafeAreaView>
