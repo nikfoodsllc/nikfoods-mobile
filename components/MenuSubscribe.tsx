@@ -12,12 +12,29 @@ import { useAuth } from '@/contexts/AuthContext';
 // Someone who is already subscribed sees nothing.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Same as the website: someone who is not logged in is remembered by the email they subscribed with, so the box stays away next time.
+const STORAGE_KEY = 'menuSubscribedEmail';
+const rememberEmail = (value: string) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    // nothing to do: the box just shows again next time
+  }
+};
+const rememberedEmail = (): string => {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
 export default function MenuSubscribe() {
   const { user } = useAuth();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(true);
-  const [checking, setChecking] = useState(Boolean(user?.email));
+  const [checking, setChecking] = useState(Boolean(user?.email) || Boolean(rememberedEmail()));
   const [subscribed, setSubscribed] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,11 +44,13 @@ export default function MenuSubscribe() {
   useEffect(() => {
     let live = true;
     (async () => {
-      if (user?.email) {
+      // the logged-in customer's email, or the one this phone subscribed with earlier
+      if (user?.email) setEmail(user.email);
+      const known = user?.email || rememberedEmail();
+      if (known) {
         setChecking(true);
-        setEmail(user.email);
         try {
-          const response = await fetch(`/api/menu-subscriptions/check?email=${encodeURIComponent(user.email)}`);
+          const response = await fetch(`/api/menu-subscriptions/check?email=${encodeURIComponent(known)}`);
           const data = await response.json();
           if (live && data.subscribed) setSubscribed(true);
         } catch {
@@ -68,10 +87,12 @@ export default function MenuSubscribe() {
       const data = await response.json().catch(() => ({}));
       if (response.ok && data.success) {
         toast('Successfully subscribed to menu notifications!', 'success');
+        rememberEmail(address);
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setSubscribed(true);
       } else if (response.status === 409) {
         toast('This email is already subscribed', 'info');
+        rememberEmail(address);
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setSubscribed(true);
       } else {
