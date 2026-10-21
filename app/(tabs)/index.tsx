@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -29,6 +30,10 @@ export default function Home() {
   const { reload } = useHomeMenu();
   const [next, setNext] = useState<Order | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
 
   const loadNext = useCallback(async () => {
     if (!user) {
@@ -57,16 +62,23 @@ export default function Home() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: S.xl, paddingTop: S.md, paddingBottom: bottomSpace, gap: S.xl + 4 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={async () => { setRefreshing(true); await Promise.all([reload(), loadNext()]); setRefreshing(false); }} />}
       >
         <Reveal index={0}>
-          <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
-          <Text weight="display" size={46} style={{ marginTop: S.xl }}>{first ? `${first},` : 'Welcome,'}</Text>
-          <Text weight="display" size={46} color={C.brandDark}>what shall we cook?</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
+            {first ? <Text weight="display" size={22} color={C.brandDark} numberOfLines={1} style={{ flexShrink: 1, marginLeft: S.md }}>{`Hello, ${first}`}</Text> : null}
+          </View>
+        </Reveal>
+
+        <Reveal index={1}>
+          <HomeBanners scrollY={scrollY} />
         </Reveal>
 
         {next && nextDay && (
@@ -90,20 +102,15 @@ export default function Home() {
             onPress={() => { tap(); router.navigate('/menu'); }}
             accessibilityRole="button"
             accessibilityLabel="Order now"
-            style={({ pressed }) => [{ backgroundColor: C.ink, borderRadius: 34, paddingVertical: S.xl, paddingLeft: S.xl + 4, paddingRight: S.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', transform: [{ scale: pressed ? 0.985 : 1 }] }, shadow]}
+            style={({ pressed }) => [{ backgroundColor: C.ink, borderRadius: 34, paddingVertical: S.md, paddingLeft: S.xl, paddingRight: S.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', transform: [{ scale: pressed ? 0.985 : 1 }] }, shadow]}
           >
             <View style={{ flex: 1 }}>
-              <Eyebrow color={C.gold}>The menu</Eyebrow>
-              <Text weight="display" size={38} color={C.ivory} style={{ marginTop: 2 }}>Order now</Text>
+              <Text weight="display" size={30} color={C.ivory}>Order now</Text>
             </View>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="arrow-forward" size={26} color={C.onBrand} />
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="arrow-forward" size={24} color={C.onBrand} />
             </View>
           </Pressable>
-        </Reveal>
-
-        <Reveal index={4}>
-          <HomeBanners />
         </Reveal>
 
         <Reveal index={5}>
@@ -111,7 +118,7 @@ export default function Home() {
         </Reveal>
 
         {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
-      </ScrollView>
+      </Animated.ScrollView>
       <CartBar />
     </SafeAreaView>
   );
