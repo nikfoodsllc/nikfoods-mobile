@@ -25,8 +25,11 @@ const LABEL: Record<Row['type'], string> = { issued: 'Credit added', used: 'Used
 const openPage = (path: string) => void WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
 
 function Legal() {
+  const router = useRouter();
   return (
     <Card style={{ paddingVertical: S.xs }}>
+      <Item icon="chatbubbles-outline" label="Chat with us" onPress={() => router.push('/chat')} />
+      <Divider />
       <Item icon="document-text-outline" label="Terms" onPress={() => openPage('/terms')} />
       <Divider />
       <Item icon="shield-checkmark-outline" label="Privacy" onPress={() => openPage('/privacy')} />
@@ -226,7 +229,7 @@ export default function Account() {
           <Pressable onPress={openEdit} hitSlop={10} accessibilityLabel="Edit profile"><Ionicons name="create-outline" size={22} color={C.body} /></Pressable>
         </Card>
 
-        {balance > 0 || history.length > 0 ? (
+        {balance > 0 ? (
           <Pressable onPress={() => setCreditOpen(true)} accessibilityRole="button" accessibilityLabel="Store credit">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, padding: S.lg, borderRadius: R.lg, backgroundColor: C.cream, borderWidth: 1, borderColor: C.creamLine }}>
               <Ionicons name="wallet-outline" size={26} color={C.brandDark} />

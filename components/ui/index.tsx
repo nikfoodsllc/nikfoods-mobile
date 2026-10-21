@@ -166,6 +166,8 @@ export function Sheet({
   scrollRef?: React.RefObject<ScrollView | null>;
 }) {
   const insets = useSafeAreaInsets();
+  // The sheet is lifted above the keyboard by the KeyboardAvoidingView below. The inner scroll view must NOT also add keyboard space
+  // (automaticallyAdjustKeyboardInsets): doing both squeezed a short form (the zip code box) out of view.
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
@@ -190,7 +192,7 @@ export function Sheet({
               <Ionicons name="close" size={20} color={C.text} />
             </Pressable>
           </View>
-          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
+          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
             {children}
           </ScrollView>
           {footer ? (

@@ -271,6 +271,15 @@ export default function Menu() {
   const datesForRef = useRef(datesFor);
   datesForRef.current = datesFor;
   const [stickyKey, setStickyKey] = useState<string | null>(null);
+  const listRef = useRef<FlatList<Row>>(null);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const datesViews = useRef(new Map<string, View | null>()); // the real day-chip rows, to measure where they are on screen
+  const barRef = useRef<View>(null); // the search box + category chips (the part that is always pinned)
+  const barHeight = useRef(0);
+  const gov = useRef<{ key: string; at: number; top: number } | null>(null);
+  const stickyKeyRef = useRef<string | null>(null);
+  stickyKeyRef.current = stickyKey;
 
   // the category row scrolls sideways: a fade and an arrow on the right edge say there is more, until the end is reached
   const chipsRef = useRef<ScrollView>(null);
@@ -283,13 +292,70 @@ export default function Menu() {
     setChipsMore((p) => (p.left === next.left && p.right === next.right ? p : next));
   };
   // the day chips are pinned once their own row has scrolled out of sight and dishes of that section are on screen
+  // When the day-chip row is the top visible row it may be mostly hidden under the pinned bar (it still counts as "visible"):
+  // measure where it really is, and pin the chips exactly while the real row is covered, so they are never missing.
+  const measurePin = useRef(() => {
+    const g = gov.current;
+    if (!g || g.top > g.at) return;
+    const view = datesViews.current.get(g.key);
+    const bar = barRef.current;
+    if (!view || !bar) return;
+    bar.measureInWindow((_bx, by, _bw, bh) => {
+      view.measureInWindow((_vx, vy) => {
+        if (gov.current?.key !== g.key) return;
+        const covered = vy < by + bh - 1;
+        setStickyKey(covered ? g.key : null);
+      });
+    });
+  });
+  const scrollTick = useRef(false);
+  const onListScroll = useRef(() => {
+    if (scrollTick.current || !gov.current || gov.current.top > gov.current.at) return;
+    scrollTick.current = true;
+    requestAnimationFrame(() => {
+      scrollTick.current = false;
+      measurePin.current();
+    });
+  });
   const onViewable = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
     const idx = viewableItems.map((v) => v.index).filter((i): i is number => i != null && i > 0);
-    if (!idx.length) return setStickyKey(null);
+    if (!idx.length) {
+      gov.current = null;
+      return setStickyKey(null);
+    }
     const top = Math.min(...idx);
     const governing = datesForRef.current[top];
-    setStickyKey(governing && top > governing.at ? governing.row.key : null);
+    if (governing && top > governing.at) {
+      gov.current = { key: governing.row.key, at: governing.at, top };
+      return setStickyKey(governing.row.key); // its own row is above the screen
+    }
+    // The category heading or the day chips themselves are the top rows (they can be mostly hidden under the pinned bar and still
+    // count as visible): find the day chips of this category at or below that row, and measure whether they are hidden.
+    const all = rowsRef.current;
+    let n = -1;
+    for (let i = top; i < all.length; i++) {
+      if (all[i].type === 'dates') {
+        n = i;
+        break;
+      }
+      if (i > top && all[i].type === 'cat') break;
+    }
+    gov.current = n >= 0 ? { key: all[n].key, at: n, top } : null;
+    if (n < 0) return setStickyKey(null);
+    measurePin.current();
   });
+
+  // Choosing another day while the day chips are pinned (you are part-way down the list) starts that day's dishes from the top.
+  const pickDate = (catId: string, date: string) => {
+    tap();
+    const pinned = stickyKeyRef.current !== null && rowsRef.current.some((r) => r.type === 'dates' && r.key === stickyKeyRef.current && r.catId === catId);
+    setDateByCat((p) => ({ ...p, [catId]: date }));
+    if (!pinned) return;
+    const index = rowsRef.current.findIndex((r) => r.type === 'dates' && r.catId === catId);
+    if (index < 0) return;
+    requestAnimationFrame(() => listRef.current?.scrollToIndex({ index, viewOffset: barHeight.current, animated: false }));
+  };
+
   const viewConfig = useRef({ itemVisiblePercentThreshold: 10 });
   const stickyRow = useMemo(() => (stickyKey ? (rows.find((r) => r.type === 'dates' && r.key === stickyKey) as DatesRow | undefined) ?? null : null), [rows, stickyKey]);
   const listExtra = useMemo(() => ({ cart, stickyKey, dateByCat, chipsMore, query }), [cart, stickyKey, dateByCat, chipsMore, query]);
@@ -307,6 +373,7 @@ export default function Menu() {
   // the search box and the category chips are ONE sticky bar under the address: they stay on screen while you scroll
   const renderChips = () => (
     <View style={{ backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line }}>
+      <View ref={barRef} collapsable={false} onLayout={(e) => { barHeight.current = e.nativeEvent.layout.height; }}>
       <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.xs }}>
         <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
       </View>
@@ -334,13 +401,14 @@ export default function Menu() {
         {[{ _id: '', name: 'All', imageUrl: '' }, ...categories].map((c) => {
           const on = selectedCategory === c._id;
           return (
-            <Pressable key={c._id || 'all'} onPress={() => { tap(); setSelectedCategory(c._id); }} accessibilityRole="button" accessibilityLabel={c.name} style={{ alignItems: 'center', width: 62 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, borderColor: on ? C.brand : 'transparent', padding: 2 }}>
-                <View style={{ flex: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: on && !c._id ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>
-                  {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text weight="bold" size={15} color={on ? C.onBrand : C.body}>All</Text>}
+            <Pressable key={c._id || 'all'} onPress={() => { tap(); setSelectedCategory(c._id); }} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={c.name} style={{ alignItems: 'center', width: 84 }}>
+              <View style={{ width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: on ? C.brand : 'transparent', padding: 3, opacity: on ? 1 : 0.85 }}>
+                <View style={{ flex: 1, borderRadius: 30, overflow: 'hidden', backgroundColor: on && !c._id ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>
+                  {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text weight="bold" size={17} color={on ? C.onBrand : C.body}>All</Text>}
                 </View>
               </View>
-              <Text weight={on ? 'bold' : 'medium'} size={11} color={on ? C.text : C.muted} numberOfLines={2} maxFontSizeMultiplier={1.1} style={{ marginTop: 4, textAlign: 'center' }}>{c.name}</Text>
+              <Text weight={on ? 'bold' : 'medium'} size={13} color={on ? C.text : C.muted} numberOfLines={2} maxFontSizeMultiplier={1.1} style={{ marginTop: 6, textAlign: 'center' }}>{c.name}</Text>
+              <View style={{ height: 3, width: 30, borderRadius: 2, marginTop: 4, backgroundColor: on ? C.brand : 'transparent' }} />
             </Pressable>
           );
         })}
@@ -381,12 +449,13 @@ export default function Menu() {
       )}
       </View>
       )}
+      </View>
       {stickyRow && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ borderTopWidth: 1, borderTopColor: C.line }} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: 6, gap: S.sm }} keyboardShouldPersistTaps="handled">
           {stickyRow.dates.map((d) => {
             const on = d.date === stickyRow.selected;
             return (
-              <Pressable key={d.date} onPress={() => { tap(); setDateByCat((p) => ({ ...p, [stickyRow.catId]: d.date })); }} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 34, paddingHorizontal: 14, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
+              <Pressable key={d.date} onPress={() => pickDate(stickyRow.catId, d.date)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 34, paddingHorizontal: 14, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
                 <Text weight="semibold" size={13} color={on ? C.white : C.body} maxFontSizeMultiplier={1.1}>{d.label}</Text>
               </Pressable>
             );
@@ -415,16 +484,18 @@ export default function Menu() {
         );
       case 'dates':
         return (
+          <View ref={(v) => { datesViews.current.set(row.key, v); }} collapsable={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.lg, gap: S.sm, paddingBottom: S.md }}>
             {row.dates.map((d) => {
               const on = d.date === row.selected;
               return (
-                <Pressable key={d.date} onPress={() => { tap(); setDateByCat((p) => ({ ...p, [row.catId]: d.date })); }} style={{ height: 40, paddingHorizontal: 16, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
+                <Pressable key={d.date} onPress={() => pickDate(row.catId, d.date)} style={{ height: 40, paddingHorizontal: 16, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.text : C.surface }}>
                   <Text weight="semibold" size={14} color={on ? C.white : C.body}>{d.label}</Text>
                 </Pressable>
               );
             })}
           </ScrollView>
+          </View>
         );
       case 'pair':
         return (
@@ -507,6 +578,7 @@ export default function Menu() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
       <FlatList
+        ref={listRef}
         data={rows}
         keyExtractor={(r) => r.key}
         renderItem={renderRow}
@@ -521,6 +593,13 @@ export default function Menu() {
         extraData={listExtra}
         onViewableItemsChanged={onViewable.current}
         viewabilityConfig={viewConfig.current}
+        onScroll={onListScroll.current}
+        scrollEventThrottle={16}
+        onScrollToIndexFailed={(info) => {
+          // the row is not measured yet (it is far above): jump near it, then place it
+          listRef.current?.scrollToOffset({ offset: Math.max(0, info.averageItemLength * info.index), animated: false });
+          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, viewOffset: barHeight.current, animated: false }), 80);
+        }}
       />
       <CartBar />
       <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} />

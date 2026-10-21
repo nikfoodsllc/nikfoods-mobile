@@ -7,7 +7,7 @@ import CreditNotice from '@/components/CreditNotice';
 import DeliveryTracker from '@/components/DeliveryTracker';
 import { deliveryOf, ItemRow, StatusChip } from '@/components/OrderParts';
 import { useToast } from '@/components/Toast';
-import { Card, Divider, Text } from '@/components/ui';
+import { Button, Card, Divider, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
 import { useApiClient } from '@/hooks/useApiClient';
 import { formatOrderDate } from '@/lib/orderHelpers';
@@ -82,6 +82,8 @@ export default function OrderDetail() {
           {!!a.entrance && <Text size={13} color={C.muted} style={{ marginTop: 4 }}>Gate code {a.entrance}</Text>}
           {!!a.floor && <Text size={13} color={C.muted} style={{ marginTop: 2 }}>{a.floor}</Text>}
         </Card>
+
+        <Button label="Need help with this order?" variant="outline" onPress={() => router.push({ pathname: '/chat', params: { order: order.orderId } })} />
       </View>
     );
   };
