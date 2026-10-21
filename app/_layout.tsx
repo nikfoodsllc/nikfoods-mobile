@@ -2,6 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StripeProvider } from '@stripe/stripe-react-native';
+import * as Linking from 'expo-linking';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +15,7 @@ import { APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
 import { C } from '@/constants/theme';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { routeForIncomingLink } from '@/lib/deepLink';
 import { configureNotifications } from '@/lib/push';
 import { initRuntime, onRedirect } from '@/lib/runtime';
 
@@ -55,8 +57,22 @@ export default function RootLayout() {
   );
 }
 
+let launchLinkHandled = false;
+
 function Nav() {
   const router = useRouter();
+
+  // The link that LAUNCHED the app (a View my order link tapped while the app was closed): the root layout draws nothing until the
+  // fonts and storage are ready, and by then the router has dropped it, so the app opened on the menu. Look at it again here, once.
+  useEffect(() => {
+    if (launchLinkHandled) return;
+    launchLinkHandled = true;
+    void Linking.getInitialURL().then((url) => {
+      if (!url) return;
+      const target = routeForIncomingLink(url);
+      if (target && target !== '/') router.navigate(target as never);
+    });
+  }, [router]);
 
   // the website code sends visitors to '/' when a session expired: show the sign-in screen
   useEffect(() => onRedirect(() => router.replace('/login')), [router]);
