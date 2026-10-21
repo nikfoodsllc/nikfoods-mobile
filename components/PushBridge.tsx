@@ -24,8 +24,8 @@ export default function PushBridge() {
     if (!target) return;
     // the list goes underneath first, so Back from the order lands on All orders (not on the menu)
     if (target.kind === 'order') {
-      router.navigate('/orders');
-      setTimeout(() => router.push({ pathname: '/orders/[id]', params: { id: target.id } }), 50);
+      router.navigate('/account/orders');
+      setTimeout(() => router.push({ pathname: '/account/orders/[id]', params: { id: target.id } }), 50);
     }
     else if (target.kind === 'pay') void WebBrowser.openBrowserAsync(target.url);
     else if (target.kind === 'cart') router.navigate('/cart');

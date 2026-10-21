@@ -85,7 +85,12 @@ export default function Orders() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={{ gap: S.md, marginBottom: S.sm }}>
-            <Text weight="bold" size={30}>Orders</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+              <Pressable onPress={() => (router.canGoBack() ? router.back() : router.navigate('/account'))} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="chevron-back" size={22} color={C.text} />
+              </Pressable>
+              <Text weight="bold" size={30}>Orders</Text>
+            </View>
             <SearchField value={query} onChangeText={setQuery} placeholder="Search orders" />
           </View>
         }
@@ -98,7 +103,7 @@ export default function Orders() {
         renderItem={({ item: o }) => {
           const refunded = getRefundedAmount(o);
           return (
-            <Pressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: o.orderId } })} accessibilityRole="button" accessibilityLabel={`Order ${o.orderId}`}>
+            <Pressable onPress={() => router.push({ pathname: '/account/orders/[id]', params: { id: o.orderId } })} accessibilityRole="button" accessibilityLabel={`Order ${o.orderId}`}>
               <Card>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: S.md }}>
                   <Text weight="bold" size={15} numberOfLines={1} style={{ flex: 1 }}>{o.orderId.startsWith('#') ? o.orderId : `#${o.orderId}`}</Text>

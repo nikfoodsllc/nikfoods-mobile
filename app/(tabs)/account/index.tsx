@@ -215,7 +215,7 @@ export default function Account() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
       <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <Text weight="bold" size={30}>Account</Text>
+        <Text weight="bold" size={30}>Profile</Text>
 
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
@@ -243,6 +243,8 @@ export default function Account() {
         ) : null}
 
         <Card style={{ paddingVertical: S.xs }}>
+          <Item icon="receipt-outline" label="Orders" onPress={() => router.push('/account/orders')} />
+          <Divider />
           <Item icon="location-outline" label="Addresses" onPress={() => router.push('/account/addresses')} />
           <Divider />
           <Item icon="notifications-outline" label="Notifications" onPress={() => router.push('/account/notifications')} />

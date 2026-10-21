@@ -31,10 +31,10 @@ export default function TabLayout() {
         tabBarAllowFontScaling: false,
       }}
     >
-      {tab('index', 'Menu', 'restaurant-outline', 'restaurant')}
+      {tab('index', 'Home', 'home-outline', 'home')}
+      {tab('menu', 'Menu', 'restaurant-outline', 'restaurant')}
       {tab('cart', 'Cart', 'bag-outline', 'bag', itemCount)}
-      {tab('orders', 'Orders', 'receipt-outline', 'receipt')}
-      {tab('account', 'Account', 'person-outline', 'person')}
+      {tab('account', 'Profile', 'person-outline', 'person')}
     </Tabs>
   );
 }

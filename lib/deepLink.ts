@@ -15,9 +15,11 @@ export function routeForIncomingLink(input: string): string {
     return '/';
   }
   // the app's own links (nikfoodsmobile://orders/ORD-1) and screens already use the app's paths
-  if (/^\/orders\/[^/]+$/.test(pathname) || pathname === '' || pathname === '/') return pathname || '/';
+  if (/^\/orders\/[^/]+$/.test(pathname)) return `/account${pathname}`; // the app's older path for an order
+  if (pathname === '/orders') return '/account/orders';
+  if (pathname === '' || pathname === '/') return pathname || '/';
   if (pathname === '/account/orders') {
-    return order && /^[A-Za-z0-9#-]{4,60}$/.test(order) ? `/orders/${encodeURIComponent(order)}` : '/orders';
+    return order && /^[A-Za-z0-9#-]{4,60}$/.test(order) ? `/account/orders/${encodeURIComponent(order)}` : '/account/orders';
   }
   return path.startsWith('/') && !path.startsWith('//') && !/^\/[a-z]+:/i.test(path) ? path : '/';
 }

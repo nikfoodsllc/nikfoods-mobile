@@ -351,3 +351,46 @@ export function collectSortedDatesForDayWiseParentWithSubs(category: CategoryDis
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
+
+/**
+ * The categories of the menu with their dishes ready to show (sub-categories attached, veg choice and open days applied).
+ * Pass a category id to get only that one. One place for it, so the category list and the dishes page can never disagree.
+ */
+export function buildMenuSections(
+  categories: CategoryListItem[],
+  map: Map<string, CategoryDisplay>,
+  onlyCategory: string,
+  vegOnly: boolean,
+  availableDates: DayOption[]
+): Array<{ meta: CategoryListItem; category: CategoryDisplay | null }> {
+  const parents = onlyCategory ? categories.filter((c) => c._id === onlyCategory) : categories;
+  return parents.map((meta) => {
+    const row = map.get(meta._id);
+    let merged: CategoryDisplay | null = null;
+    if (row) {
+      merged = { ...row };
+      if (meta.children?.length) {
+        const subs = meta.children
+          .slice()
+          .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+          .map((ch) => map.get(ch._id))
+          .filter((x): x is CategoryDisplay => !!x);
+        if (subs.length > 0) merged = { ...merged, subCategories: subs };
+      }
+    }
+    return { meta, category: merged ? applyCategoryDisplayFilters(merged, vegOnly, availableDates) : null };
+  });
+}
+
+/** How many different dishes a category (with its sub-categories) offers right now. */
+export function countDishes(category: CategoryDisplay | null): number {
+  if (!category) return 0;
+  const ids = new Set<string>();
+  const walk = (c: CategoryDisplay) => {
+    for (const it of c.foodItems ?? []) ids.add(normalizeItemId(it._id));
+    for (const g of c.dayGroups ?? []) for (const it of g.foodItems) ids.add(normalizeItemId(it._id));
+    for (const sub of c.subCategories ?? []) walk(sub);
+  };
+  walk(category);
+  return ids.size;
+}

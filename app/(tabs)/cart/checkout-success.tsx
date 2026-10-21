@@ -63,7 +63,7 @@ export default function CheckoutSuccess() {
         )}
 
         <View style={{ alignSelf: 'stretch', gap: S.sm, marginTop: S.xl }}>
-          <Button label="View order" onPress={() => router.replace({ pathname: '/orders/[id]', params: { id: String(orderId) } })} />
+          <Button label="View order" onPress={() => router.replace({ pathname: '/account/orders/[id]', params: { id: String(orderId) } })} />
           <Button label="Back to the menu" variant="ghost" onPress={() => router.replace('/')} />
         </View>
       </ScrollView>
