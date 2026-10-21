@@ -32,7 +32,6 @@ import { useTabBarSpace } from '@/lib/useTabBarSpace';
 type DayGroup = CategoryDisplay['dayGroups'][number];
 type Cell = { item: FoodItem; dayGroup?: DayGroup };
 type Row =
-  | { type: 'chips'; key: string }
   | { type: 'cat'; key: string; name: string }
   | { type: 'sub'; key: string; name: string }
   | { type: 'dates'; key: string; catId: string; dates: { date: string; label: string }[]; selected: string }
@@ -45,7 +44,7 @@ type DatesRow = Extract<Row, { type: 'dates' }>;
  * The menu's dishes (day chips, pinned day chips, add to cart, item sheets) for one category, or for a search across everything.
  * Used by the Menu tab: the category page passes categoryId, the search passes query. The parent draws the page title / search box.
  */
-export default function MenuBrowser({ categoryId = '', query = '', stickyTop = null, header = null }: { categoryId?: string; query?: string; stickyTop?: React.ReactNode; header?: React.ReactElement | null }) {
+export default function MenuBrowser({ categoryId = '', query = '', header = null }: { categoryId?: string; query?: string; header?: React.ReactElement | null }) {
   const bottomSpace = useTabBarSpace(true);
   const toast = useToast();
   const { refreshCart, cart } = useCart();
@@ -165,7 +164,7 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
   );
 
   const rows = useMemo(() => {
-    const out: Row[] = [{ type: 'chips', key: 'chips' }];
+    const out: Row[] = [];
     const pairs = (items: Cell[], key: string) => {
       for (let i = 0; i < items.length; i += 2) out.push({ type: 'pair', key: `${key}-${i}`, cells: items.slice(i, i + 2) });
     };
@@ -229,7 +228,7 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         if (g) pairs(g.foodItems.map((item) => ({ item, dayGroup: g })), `d-${meta._id}-${sel}`);
       }
     }
-    if (out.length === 1) out.push({ type: 'empty', key: 'empty', text: vegOnly ? 'No vegetarian items right now' : 'Nothing on the menu right now' });
+    if (out.length === 0) out.push({ type: 'empty', key: 'empty', text: vegOnly ? 'No vegetarian items right now' : 'Nothing on the menu right now' });
     return out;
   }, [sections, categories, map, availableDates, dateByCat, vegOnly, searching, query, categoryId]);
 
@@ -254,8 +253,6 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
   rowsRef.current = rows;
   const datesViews = useRef(new Map<string, View | null>()); // the real day-chip rows, to measure where they are on screen
   const boxRef = useRef<View>(null); // the whole list area: the pinned part sits at its top
-  const barRef = useRef<View>(null); // whatever the parent pins above the dishes (can be nothing)
-  const barHeight = useRef(0);
   const gov = useRef<{ key: string; at: number; top: number } | null>(null);
   const stickyKeyRef = useRef<string | null>(null);
   stickyKeyRef.current = stickyKey;
@@ -272,7 +269,8 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
     box.measureInWindow((_bx, by) => {
       view.measureInWindow((_vx, vy) => {
         if (gov.current?.key !== g.key) return;
-        const covered = vy < by + barHeight.current - 1;
+        // the real day chips are covered once their top edge has gone above the top of the list
+        const covered = vy < by - 1;
         setStickyKey(covered ? g.key : null);
       });
     });
@@ -287,7 +285,7 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
     });
   });
   const onViewable = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
-    const idx = viewableItems.map((v) => v.index).filter((i): i is number => i != null && i > 0);
+    const idx = viewableItems.map((v) => v.index).filter((i): i is number => i != null);
     if (!idx.length) {
       gov.current = null;
       return setStickyKey(null);
@@ -322,7 +320,7 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
     if (!pinned) return;
     const index = rowsRef.current.findIndex((r) => r.type === 'dates' && r.catId === catId);
     if (index < 0) return;
-    requestAnimationFrame(() => listRef.current?.scrollToIndex({ index, viewOffset: barHeight.current, animated: false }));
+    requestAnimationFrame(() => listRef.current?.scrollToIndex({ index, animated: false }));
   };
 
   const viewConfig = useRef({ itemVisiblePercentThreshold: 10 });
@@ -339,31 +337,26 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
     void cart;
   }, [cart]);
 
-  // the sticky bar: what the parent wants pinned (nothing, or the search box), plus the day chips once their own row has scrolled away
-  const renderChips = () => (
-    <View style={{ backgroundColor: C.white }}>
-      <View ref={barRef} collapsable={false} onLayout={(e) => { barHeight.current = e.nativeEvent.layout.height; }}>
-        {stickyTop}
-      </View>
-      {stickyRow && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: C.bg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line }} contentContainerStyle={{ paddingHorizontal: S.xl, paddingVertical: 8, gap: S.sm }} keyboardShouldPersistTaps="handled">
-          {stickyRow.dates.map((d) => {
-            const on = d.date === stickyRow.selected;
-            return (
-              <Pressable key={d.date} onPress={() => pickDate(stickyRow.catId, d.date)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 34, paddingHorizontal: 14, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.ink : C.surface }}>
-                <Text weight="semibold" size={13} color={on ? C.white : C.body} maxFontSizeMultiplier={1.1}>{d.label}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
+  // The pinned day chips are an overlay on top of the list, NOT a row of it: a row would change the list's height the moment it
+  // appears and push every dish down (the jump you saw at the start of a scroll). It is laid out exactly like the real chip row,
+  // so when the real row slides under it nothing seems to change.
+  const pinnedBar = stickyRow ? (
+    <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: C.bg }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.xl, gap: S.sm, paddingBottom: S.md }} keyboardShouldPersistTaps="handled">
+        {stickyRow.dates.map((d) => {
+          const on = d.date === stickyRow.selected;
+          return (
+            <Pressable key={d.date} onPress={() => pickDate(stickyRow.catId, d.date)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`Delivery day ${d.label}`} style={{ height: 42, paddingHorizontal: 18, borderRadius: R.pill, justifyContent: 'center', backgroundColor: on ? C.ink : C.white, borderWidth: StyleSheet.hairlineWidth, borderColor: on ? C.ink : C.line }}>
+              <Text weight="semibold" size={14} color={on ? C.ivory : C.body}>{d.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
-  );
+  ) : null;
 
   const renderRow = ({ item: row }: { item: Row }) => {
     switch (row.type) {
-      case 'chips':
-        return renderChips();
       case 'cat':
         return (
           <View style={{ paddingHorizontal: S.xl, paddingTop: S.xl, paddingBottom: S.md }}>
@@ -464,7 +457,6 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         keyExtractor={(r) => r.key}
         renderItem={renderRow}
         ListHeaderComponent={header}
-        stickyHeaderIndices={header ? [1] : [0]}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: bottomSpace }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
@@ -479,9 +471,10 @@ export default function MenuBrowser({ categoryId = '', query = '', stickyTop = n
         onScrollToIndexFailed={(info) => {
           // the row is not measured yet (it is far above): jump near it, then place it
           listRef.current?.scrollToOffset({ offset: Math.max(0, info.averageItemLength * info.index), animated: false });
-          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, viewOffset: barHeight.current, animated: false }), 80);
+          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: false }), 80);
         }}
       />
+      {pinnedBar}
       <CartBar />
       <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} />
       <DaySheet item={daySheet?.item ?? null} customizations={daySheet?.customizations} onClose={() => setDaySheet(null)} onConfirm={onDaysConfirm} />
