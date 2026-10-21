@@ -82,15 +82,14 @@ export default function MenuCategories() {
                 <Pressable
                   onPress={() => { tap(); router.push({ pathname: '/menu/[id]', params: { id: item.meta._id } }); }}
                   accessibilityRole="button"
-                  accessibilityLabel={`${item.meta.name}, ${item.count} dishes`}
+                  accessibilityLabel={item.meta.name}
                   style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: S.xl, paddingHorizontal: S.xl, paddingVertical: S.lg, minHeight: 156, opacity: pressed ? 0.75 : 1 })}
                 >
                   <View style={[{ width: 124, height: 124, borderRadius: 36, overflow: 'hidden', backgroundColor: C.surface, borderWidth: 3, borderColor: C.white }, shadow]}>
                     {item.meta.imageUrl ? <Image source={{ uri: item.meta.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={250} /> : null}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Eyebrow>{item.count} {item.count === 1 ? 'dish' : 'dishes'}</Eyebrow>
-                    <Text weight="display" size={33} numberOfLines={3} maxFontSizeMultiplier={1.15} style={{ marginTop: 4 }}>{item.meta.name}</Text>
+                    <Text weight="display" size={33} numberOfLines={3} maxFontSizeMultiplier={1.15} >{item.meta.name}</Text>
                   </View>
                   <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(26,20,16,0.16)', alignItems: 'center', justifyContent: 'center' }}>
                     <Ionicons name="arrow-forward" size={17} color={C.ink} />
