@@ -115,10 +115,17 @@ export function Button({
  * A bezel card: a thin tray (paper-tinted, hairline edge) holding a white core with its own soft shadow, so it reads as a
  * machined plate rather than a box on a page. `style` styles the white core.
  */
+// Layout props (margins, stretching, width) belong to the outer shell, so the card itself sits where it is told; the rest styles the inside.
+const OUTER_KEYS = ['alignSelf', 'flex', 'flexGrow', 'flexShrink', 'width', 'maxWidth', 'minWidth', 'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical', 'position', 'top', 'left', 'right', 'bottom'];
+
 export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const k of Object.keys(flat)) (OUTER_KEYS.includes(k) ? outer : inner)[k] = flat[k];
   return (
-    <View style={{ backgroundColor: C.shell, borderRadius: R.xl + 4, padding: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line }}>
-      <View style={[{ backgroundColor: C.white, borderRadius: R.xl, padding: S.lg }, shadowSm, style]}>{children}</View>
+    <View style={[{ backgroundColor: C.shell, borderRadius: R.xl + 4, padding: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line }, outer as ViewStyle]}>
+      <View style={[{ backgroundColor: C.white, borderRadius: R.xl, padding: S.lg }, shadowSm, inner as ViewStyle]}>{children}</View>
     </View>
   );
 }

@@ -52,8 +52,8 @@ export default function CheckoutSuccess() {
           <Card style={{ alignSelf: 'stretch', marginTop: S.xl }}>
             {order.items.map((d, i) => (
               <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
-                <Text size={15} color={C.body}>{deliveryOf(d)}</Text>
-                <Text size={15} color={C.muted}>{d.items.reduce((n, it) => n + it.quantity, 0)} items</Text>
+                <Text size={15} color={C.body} style={{ flex: 1 }}>{deliveryOf(d)}</Text>
+                <Text size={15} color={C.muted} style={{ marginLeft: S.md }}>{d.items.reduce((n, it) => n + it.quantity, 0)} items</Text>
               </View>
             ))}
             <View style={{ height: 1, backgroundColor: C.line, marginVertical: S.sm }} />
