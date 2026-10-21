@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CreditNotice from '@/components/CreditNotice';
 import { deliveryOf, StatusChip } from '@/components/OrderParts';
+import SearchField from '@/components/SearchField';
 import { Button, Card, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,31 +24,45 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [applied, setApplied] = useState(''); // the search the list is showing (after a short typing pause)
+  const latest = useRef(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setApplied(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const load = useCallback(
-    async (p: number, replace: boolean) => {
+    async (p: number, replace: boolean, q: string) => {
+      // only the newest request may change the list (an older, slower answer must not replace it)
+      const mine = ++latest.current;
       try {
-        const r = await authenticatedFetch(`/api/orders?page=${p}&status=all&limit=10`);
+        const r = await authenticatedFetch(`/api/orders?page=${p}&status=all&limit=10${q ? `&q=${encodeURIComponent(q)}` : ''}`);
         const j = await r.json();
+        if (mine !== latest.current) return;
         if (!r.ok || !j.success) throw new Error('x');
         setOrders((prev) => (replace ? j.data.items : [...prev, ...j.data.items]));
         setPage(p);
         setHasMore(Boolean(j.data.hasNextPage));
         setError('');
       } catch {
+        if (mine !== latest.current) return;
         setError("Couldn't load your orders");
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (mine === latest.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [authenticatedFetch]
   );
 
   useEffect(() => {
-    if (user) void load(1, true);
+    if (user) void load(1, true, applied);
     else setLoading(false);
-  }, [user, load]);
+  }, [user, load, applied]);
 
   if (!user) {
     return (
@@ -67,12 +82,18 @@ export default function Orders() {
         data={orders}
         keyExtractor={(o) => o.orderId}
         contentContainerStyle={{ padding: S.lg, paddingBottom: 40, gap: S.md }}
-        ListHeaderComponent={<Text weight="bold" size={30} style={{ marginBottom: S.sm }}>Orders</Text>}
-        refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={() => { setRefreshing(true); void load(1, true); }} />}
-        onEndReached={() => hasMore && void load(page + 1, false)}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View style={{ gap: S.md, marginBottom: S.sm }}>
+            <Text weight="bold" size={30}>Orders</Text>
+            <SearchField value={query} onChangeText={setQuery} placeholder="Search orders" />
+          </View>
+        }
+        refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={() => { setRefreshing(true); void load(1, true, applied); }} />}
+        onEndReached={() => hasMore && void load(page + 1, false, applied)}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
-          loading ? <ActivityIndicator color={C.brand} style={{ marginTop: 40 }} /> : error ? <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>{error}</Text> : <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>No orders yet</Text>
+          loading ? <ActivityIndicator color={C.brand} style={{ marginTop: 40 }} /> : error ? <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>{error}</Text> : <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>{applied ? `No orders match "${applied}"` : 'No orders yet'}</Text>
         }
         renderItem={({ item: o }) => {
           const refunded = getRefundedAmount(o);

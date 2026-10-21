@@ -10,6 +10,7 @@ import DeliveryBar from '@/components/DeliveryBar';
 import FoodCard from '@/components/FoodCard';
 import ItemSheet from '@/components/ItemSheet';
 import MenuSubscribe from '@/components/MenuSubscribe';
+import SearchField from '@/components/SearchField';
 import { useToast } from '@/components/Toast';
 import { Button, Text, tap } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
@@ -27,6 +28,7 @@ import {
   normalizeItemId,
   resolveSubCategoriesForDisplay,
 } from '@/lib/homeMenu';
+import { searchMenu } from '@/lib/menuSearch';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { DayType } from '@/types/cart';
 import { FoodItem } from '@/types/food';
@@ -51,6 +53,8 @@ export default function Menu() {
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
   const [vegOnly, setVegOnlyState] = useState(() => localStorage.getItem('vegOnly') === '1');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [query, setQuery] = useState('');
+  const searching = query.trim().length > 0;
   const [dateByCat, setDateByCat] = useState<Record<string, string>>({});
   const [sheet, setSheet] = useState<{ item: FoodItem; dayGroup?: DayGroup } | null>(null);
   const [daySheet, setDaySheet] = useState<{ item: FoodItem; customizations?: CartCustomizations } | null>(null);
@@ -162,7 +166,8 @@ export default function Menu() {
 
   // ---- shaping the menu (same rules as the website) ----
   const sections = useMemo(() => {
-    const parents = selectedCategory ? categories.filter((c) => c._id === selectedCategory) : categories;
+    // searching looks through the whole menu, whichever category is picked
+    const parents = selectedCategory && !searching ? categories.filter((c) => c._id === selectedCategory) : categories;
     return parents.map((meta) => {
       const row = map.get(meta._id);
       let merged: CategoryDisplay | null = null;
@@ -179,13 +184,22 @@ export default function Menu() {
       }
       return { meta, category: merged ? applyCategoryDisplayFilters(merged, vegOnly, availableDates) : null };
     });
-  }, [categories, map, selectedCategory, vegOnly, availableDates]);
+  }, [categories, map, selectedCategory, vegOnly, availableDates, searching]);
 
   const rows = useMemo(() => {
-    const out: Row[] = [{ type: 'chips', key: 'chips' }];
+    const out: Row[] = searching ? [] : [{ type: 'chips', key: 'chips' }];
     const pairs = (items: Cell[], key: string) => {
       for (let i = 0; i < items.length; i += 2) out.push({ type: 'pair', key: `${key}-${i}`, cells: items.slice(i, i + 2) });
     };
+    if (searching) {
+      const groups = searchMenu(sections.map((s) => ({ name: s.meta.name, category: s.category })), query);
+      for (const g of groups) {
+        out.push({ type: 'cat', key: `sr-${g.date || g.title}`, name: g.title });
+        pairs(g.cells, `sr-${g.date || g.title}`);
+      }
+      if (groups.length === 0) out.push({ type: 'empty', key: 'empty', text: `No dishes match "${query.trim()}"` });
+      return out;
+    }
     for (const { meta, category } of sections) {
       if (!category) continue;
       if (!categoryOrSubsHaveItems(category)) continue;
@@ -239,7 +253,7 @@ export default function Menu() {
     }
     if (out.length === 1) out.push({ type: 'empty', key: 'empty', text: vegOnly ? 'No vegetarian items right now' : 'Nothing on the menu right now' });
     return out;
-  }, [sections, categories, map, availableDates, dateByCat, vegOnly]);
+  }, [sections, categories, map, availableDates, dateByCat, vegOnly, searching, query]);
 
   // ---- the day chips stay pinned while you scroll through the dishes they apply to ----
   // For every row: the day chips that govern it (the nearest "dates" row above it in the same category), or null.
@@ -451,6 +465,7 @@ export default function Menu() {
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E5E7EB' }} accessibilityLabel="Veg only" />
         </View>
       </View>
+      <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
       <MenuSubscribe />
       <DeliveryBar />
     </View>
@@ -491,7 +506,7 @@ export default function Menu() {
         keyExtractor={(r) => r.key}
         renderItem={renderRow}
         ListHeaderComponent={header}
-        stickyHeaderIndices={[1]}
+        stickyHeaderIndices={searching ? [] : [1]}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
