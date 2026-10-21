@@ -71,10 +71,26 @@ export default function Home() {
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={async () => { setRefreshing(true); await Promise.all([reload(), loadNext()]); setRefreshing(false); }} />}
       >
         <Reveal index={0}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
-            {first ? <Text weight="display" size={22} color={C.brandDark} numberOfLines={1} style={{ flexShrink: 1, marginLeft: S.md }}>{`Hello, ${first}`}</Text> : null}
-          </View>
+          <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
+          <Text weight="display" size={46} style={{ marginTop: S.xl }}>{first ? `${first},` : 'Welcome,'}</Text>
+          <Text weight="display" size={46} color={C.brandDark}>what shall we cook?</Text>
+        </Reveal>
+
+        <Reveal index={3}>
+          <Pressable
+            onPress={() => { tap(); router.navigate('/menu'); }}
+            accessibilityRole="button"
+            accessibilityLabel="Order now"
+            style={({ pressed }) => [{ backgroundColor: C.ink, borderRadius: 34, paddingVertical: S.xl, paddingLeft: S.xl + 4, paddingRight: S.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', transform: [{ scale: pressed ? 0.985 : 1 }] }, shadow]}
+          >
+            <View style={{ flex: 1 }}>
+              <Eyebrow color={C.gold}>The menu</Eyebrow>
+              <Text weight="display" size={38} color={C.ivory} style={{ marginTop: 2 }}>Order now</Text>
+            </View>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="arrow-forward" size={26} color={C.onBrand} />
+            </View>
+          </Pressable>
         </Reveal>
 
         <Reveal index={1}>
@@ -97,27 +113,13 @@ export default function Home() {
           </Reveal>
         )}
 
-        <Reveal index={3}>
-          <Pressable
-            onPress={() => { tap(); router.navigate('/menu'); }}
-            accessibilityRole="button"
-            accessibilityLabel="Order now"
-            style={({ pressed }) => [{ backgroundColor: C.ink, borderRadius: 34, paddingVertical: S.md, paddingLeft: S.xl, paddingRight: S.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', transform: [{ scale: pressed ? 0.985 : 1 }] }, shadow]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text weight="display" size={30} color={C.ivory}>Order now</Text>
-            </View>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="arrow-forward" size={24} color={C.onBrand} />
-            </View>
-          </Pressable>
-        </Reveal>
-
         <Reveal index={5}>
           <MenuSubscribe />
         </Reveal>
 
         {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
+
+        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Freshly made · Delivered to your door</Eyebrow>
       </Animated.ScrollView>
       <CartBar />
     </SafeAreaView>
