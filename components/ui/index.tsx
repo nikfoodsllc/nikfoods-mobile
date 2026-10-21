@@ -187,6 +187,7 @@ export function Sheet({
   footer,
   full,
   scrollRef,
+  onScrollY,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -196,6 +197,8 @@ export function Sheet({
   full?: boolean;
   /** lets the sheet's content be scrolled from outside (for example to the section that still needs a choice) */
   scrollRef?: React.RefObject<ScrollView | null>;
+  /** reports how far the content has been scrolled (the item sheet uses it to pin the item's name in the header) */
+  onScrollY?: (y: number) => void;
 }) {
   const insets = useSafeAreaInsets();
   // The sheet is lifted above the keyboard by the KeyboardAvoidingView below. The inner scroll view must NOT also add keyboard space
@@ -224,7 +227,7 @@ export function Sheet({
               <Ionicons name="close" size={20} color={C.text} />
             </Pressable>
           </View>
-          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
+          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined} scrollEventThrottle={16} contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }}>
             {children}
           </ScrollView>
           {footer ? (

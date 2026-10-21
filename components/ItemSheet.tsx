@@ -78,12 +78,15 @@ export default function ItemSheet({
   const [combo, setCombo] = useState<Record<string, string[]>>({});
   // what still needs a choice: the button names it, and pressing it scrolls to it
   const scrollRef = useRef<ScrollView>(null);
+  // once the name has scrolled out of sight it moves into the sheet's top bar, so you always see which dish you are choosing for
+  const [pinned, setPinned] = useState(false);
   const sectionY = useRef<Record<string, number>>({});
   const [showMissing, setShowMissing] = useState(false);
 
   useEffect(() => {
     if (!item) return;
     setShowMissing(false);
+    setPinned(false);
     sectionY.current = {};
     setPortion(0);
     setSpice('');
@@ -158,8 +161,9 @@ export default function ItemSheet({
     <Sheet
       visible
       onClose={onClose}
-      title=""
+      title={pinned ? item.name : ''}
       scrollRef={scrollRef}
+      onScrollY={(y) => setPinned((was) => (was ? y > 150 : y > 190))}
       footer={
         closedLabel ? (
           <Button label={closedLabel} disabled onPress={() => {}} />
