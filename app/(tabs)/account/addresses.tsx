@@ -11,6 +11,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAddresses } from '@/lib/useAddresses';
 import { IAddress } from '@/types/auth';
+import ActionBar, { ACTION_BAR_SPACE } from '@/components/ActionBar';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function Addresses() {
@@ -52,7 +53,7 @@ export default function Addresses() {
         </Pressable>
         <Text weight="display" size={32} style={{ marginLeft: S.md }}>Addresses</Text>
       </View>
-      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.md, paddingBottom: bottomSpace }}>
+      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.md, paddingBottom: bottomSpace + ACTION_BAR_SPACE }}>
         {addresses.length === 0 && <Text color={C.muted} style={{ textAlign: 'center', marginTop: S.xl }}>No saved addresses yet</Text>}
         {addresses.map((a) => {
           const id = a._id?.toString() ?? '';
@@ -88,9 +89,9 @@ export default function Addresses() {
           );
         })}
       </ScrollView>
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: S.lg, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line }}>
+      <ActionBar>
         <Button label="Add address" icon="add" onPress={() => setEditing('new')} />
-      </View>
+      </ActionBar>
       <AddressForm address={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload(); toast('Address saved'); }} />
     </SafeAreaView>
   );

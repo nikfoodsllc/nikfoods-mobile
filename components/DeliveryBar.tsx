@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { C, FONT, R, S, shadowSm } from '@/constants/theme';
+import AddressForm from '@/components/AddressForm';
 import { Button, Sheet, Text, tap } from '@/components/ui';
+import { IAddress } from '@/types/auth';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -11,16 +12,44 @@ import { useAddresses } from '@/lib/useAddresses';
 
 /** Where we deliver: one tap opens a sheet to enter a zip or pick a saved address. Shows the minimum order for the zip. */
 export default function DeliveryBar() {
-  const router = useRouter();
   const toast = useToast();
   const { user } = useAuth();
   const { selectedZipcode, minOrderValue, updateAddress, updateZipcode, cart } = useCart();
-  const { addresses, selectedAddressId } = useAddresses();
+  const { addresses, selectedAddressId, reload } = useAddresses();
   const [open, setOpen] = useState(false);
   const [zip, setZip] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
+  // adding or changing an address happens right here (a form over the page you are on), never on another screen
+  const [form, setForm] = useState<IAddress | 'new' | null>(null);
+  const idsBefore = React.useRef<string[]>([]);
+  const openForm = (target: IAddress | 'new') => {
+    idsBefore.current = addresses.map((a) => a._id?.toString() ?? '');
+    setOpen(false);
+    // the first sheet has to finish closing before the next one can open
+    setTimeout(() => setForm(target), 380);
+  };
+  const saved = async () => {
+    const was = form;
+    setForm(null);
+    await reload();
+    // a new address becomes the delivery address
+    if (was === 'new') {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const r = await fetch('/api/address', { headers: { Authorization: `Bearer ${token}` } });
+        const j = await r.json();
+        const fresh = (Array.isArray(j?.data?.items) ? (j.data.items as IAddress[]) : []).find((a) => !idsBefore.current.includes(a._id?.toString() ?? ''));
+        if (fresh?._id) await updateAddress(fresh._id.toString());
+      } catch {
+        // saved; it can be chosen from the list
+      }
+    } else if (was && selectedAddressId && was._id?.toString() === selectedAddressId) {
+      // the address in use was changed: the cart picks up the new details
+      await updateAddress(selectedAddressId).catch(() => {});
+    }
+    toast('Address saved');
+  };
   const current = addresses.find((a) => a._id?.toString() === selectedAddressId);
   const line = current ? `${current.street_address.split(',')[0]}` : selectedZipcode ? `Zip ${selectedZipcode}` : 'Add your zip code';
 
@@ -77,7 +106,7 @@ export default function DeliveryBar() {
       </Pressable>
 
       <Sheet visible={open} onClose={() => setOpen(false)} title="Deliver to">
-        {user && addresses.length > 0 && (
+        {user && (
           <View style={{ marginBottom: S.lg }}>
             {addresses.map((a) => {
               const id = a._id?.toString() ?? '';
@@ -89,18 +118,13 @@ export default function DeliveryBar() {
                     <Text weight="semibold" size={15} numberOfLines={2}>{a.street_address}</Text>
                     <Text size={13} color={C.muted}>{[a.apartment, a.city, a.postal_code].filter(Boolean).join(', ')}</Text>
                   </View>
+                  <Pressable onPress={() => openForm(a)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Edit address" style={{ paddingHorizontal: S.sm, paddingVertical: 6 }}>
+                    <Text weight="semibold" size={14} color={C.brandDark}>Edit</Text>
+                  </Pressable>
                 </Pressable>
               );
             })}
-            <Button
-              variant="outline"
-              icon="add"
-              label="Add address"
-              onPress={() => {
-                setOpen(false);
-                router.push('/account/addresses');
-              }}
-            />
+            <Button variant="outline" icon="add" label="Add address" onPress={() => openForm('new')} />
           </View>
         )}
         <Text weight="semibold" size={15} style={{ marginBottom: S.sm }}>{user && addresses.length > 0 ? 'Or use a zip code' : 'Zip code'}</Text>
@@ -122,6 +146,7 @@ export default function DeliveryBar() {
         </View>
         {!!error && <Text size={13} color={C.red} style={{ marginTop: S.sm }}>{error}</Text>}
       </Sheet>
+      <AddressForm address={form} onClose={() => setForm(null)} onSaved={() => void saved()} />
     </>
   );
 }

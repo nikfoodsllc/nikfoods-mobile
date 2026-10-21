@@ -2,14 +2,18 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AddressForm from '@/components/AddressForm';
 import DeliveryBar from '@/components/DeliveryBar';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Text, tap } from '@/components/ui';
 import { C, FONT, R, S } from '@/constants/theme';
+import { SITE_URL } from '@/constants/config';
+import { SMS_CONSENT_LABEL, SMS_CONSENT_SMALL_PRINT } from '@/lib/smsConsent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -21,6 +25,8 @@ import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '
 import { paymentIntentIdFromClientSecret, reportPaymentError } from '@/lib/checkout/reportPaymentError';
 import { planCreditForOrder, toCents, toDollars } from '@/lib/storeCredit';
 import { useAddresses } from '@/lib/useAddresses';
+import ActionBar, { ACTION_BAR_SPACE } from '@/components/ActionBar';
+import { IAddress } from '@/types/auth';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 const TIPS = [0, 5, 10, 15];
@@ -34,8 +40,13 @@ export default function Checkout() {
   const { user } = useAuth();
   const { authenticatedFetch } = useApiClient();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { cart, isLoading: cartLoading, refreshCart, zipcodeConfig } = useCart();
-  const { addresses } = useAddresses();
+  const { cart, isLoading: cartLoading, refreshCart, zipcodeConfig, updateAddress } = useCart();
+  const { addresses, reload: reloadAddresses } = useAddresses();
+  // the delivery address can be changed right here (a form over checkout), without leaving the page
+  const [editingAddress, setEditingAddress] = useState<IAddress | null>(null);
+  // text-message box: never ticked for the customer; not shown when they already agreed for this very number (as on the website)
+  const [smsConsent, setSmsConsent] = useState<{ optedIn: boolean; phone: string | null } | null>(null);
+  const [smsChecked, setSmsChecked] = useState(false);
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -99,6 +110,26 @@ export default function Checkout() {
   useEffect(() => {
     if (focused && !cartLoading && (!cart || cart.days.length === 0) && !closed && !done.current) router.replace('/cart');
   }, [focused, cart, cartLoading, closed, router]);
+
+  // what the customer already chose about text messages
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await authenticatedFetch('/api/account/sms-consent');
+        const j = await r.json().catch(() => ({}));
+        if (alive && r.ok) setSmsConsent({ optedIn: Boolean(j?.data?.optedIn), phone: j?.data?.phone ?? null });
+      } catch {
+        // the box simply stays unticked
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [user, authenticatedFetch]);
+  const phoneDigits = phone.replace(/\D/g, '').slice(-10);
+  const smsAlreadyOn = Boolean(smsConsent?.optedIn && smsConsent.phone && smsConsent.phone === phoneDigits);
 
   // store credit balance
   useEffect(() => {
@@ -217,6 +248,7 @@ export default function Checkout() {
         paymentIntentId: intentId ?? undefined,
         deliveryInstructions: cleanInstructions(instructions),
         useStoreCredit: useCredit && creditBalance > 0,
+        smsOptIn: smsChecked && !smsAlreadyOn ? true : undefined,
       }),
     });
     const data = await r.json();
@@ -340,7 +372,7 @@ export default function Checkout() {
         <View style={{ padding: S.lg, borderRadius: R.lg, backgroundColor: C.redBg }}>
           <Text size={15} color={C.red} style={{ lineHeight: 22 }}>{closed}</Text>
         </View>
-        <Button label="Back to the menu" onPress={() => router.replace('/')} />
+        <Button label="Back to the menu" onPress={() => router.replace('/menu')} />
       </SafeAreaView>
     );
   }
@@ -368,7 +400,7 @@ export default function Checkout() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace, gap: S.lg }} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace + ACTION_BAR_SPACE, gap: S.lg }} showsVerticalScrollIndicator={false}>
           {!!closed && (
             <View style={{ padding: S.lg, borderRadius: R.lg, backgroundColor: C.redBg }}>
               <Text size={14} color={C.red} style={{ lineHeight: 21 }}>{closed}</Text>
@@ -384,7 +416,19 @@ export default function Checkout() {
           <View style={{ gap: S.sm }}>
             <Text weight="bold" size={17}>Delivery address</Text>
             <DeliveryBar />
-            {addrOk ? <Text size={13} color={C.muted}>{addrLine}{cart.selectedAddress?.city ? `, ${cart.selectedAddress.city}` : ''}</Text> : <Text size={13} color={C.red}>Choose a saved address with a street</Text>}
+            {addrOk ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+                <Text size={13} color={C.muted} style={{ flex: 1 }}>{addrLine}{cart.selectedAddress?.city ? `, ${cart.selectedAddress.city}` : ''}</Text>
+                {(() => {
+                  const saved = addresses.find((x) => x._id?.toString() === cart.selectedAddress?._id);
+                  return saved ? (
+                    <Pressable onPress={() => setEditingAddress(saved)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Edit address">
+                      <Text weight="semibold" size={14} color={C.brandDark}>Edit</Text>
+                    </Pressable>
+                  ) : null;
+                })()}
+              </View>
+            ) : <Text size={13} color={C.red}>Choose a saved address with a street</Text>}
           </View>
 
           {addrOk && !cart.selectedAddress?._id.startsWith('zipcode-') && (
@@ -401,9 +445,32 @@ export default function Checkout() {
             <Text weight="bold" size={17} style={{ marginBottom: S.md }}>Contact</Text>
             <Field label="Name" value={name} onChangeText={(t) => { setName(t); setErrors((e) => ({ ...e, name: undefined })); }} error={errors.name} autoComplete="name" textContentType="name" />
             <Field label="Email" value={email} onChangeText={(t) => { setEmail(t); setErrors((e) => ({ ...e, email: undefined })); }} error={errors.email} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" />
-            <View style={{ marginBottom: -S.lg }}>
+            <View style={{ marginBottom: smsAlreadyOn ? -S.lg : 0 }}>
               <Field label="Phone" value={phone} onChangeText={(t) => { setPhone(t); setErrors((e) => ({ ...e, phone: undefined })); }} error={errors.phone} keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
             </View>
+            {!smsAlreadyOn && (
+              <View>
+                <Pressable
+                  onPress={() => { tap(); setSmsChecked((v) => !v); }}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: smsChecked }}
+                  accessibilityLabel={SMS_CONSENT_LABEL}
+                  hitSlop={6}
+                  style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}
+                >
+                  <View style={{ marginTop: 1, width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: smsChecked ? C.brand : '#D1D5DB', backgroundColor: smsChecked ? C.brand : C.white, alignItems: 'center', justifyContent: 'center' }}>
+                    {smsChecked && <Ionicons name="checkmark" size={16} color={C.onBrand} />}
+                  </View>
+                  <Text weight="medium" size={14.5} style={{ flex: 1, lineHeight: 20 }}>{SMS_CONSENT_LABEL}</Text>
+                </Pressable>
+                <Text size={12.5} color={C.muted} style={{ marginLeft: 36, marginTop: 4, lineHeight: 18 }}>
+                  {SMS_CONSENT_SMALL_PRINT}{' '}
+                  <Text size={12.5} color={C.muted} style={{ textDecorationLine: 'underline' }} onPress={() => void WebBrowser.openBrowserAsync(`${SITE_URL}/terms#sms`)}>Terms</Text>
+                  {' · '}
+                  <Text size={12.5} color={C.muted} style={{ textDecorationLine: 'underline' }} onPress={() => void WebBrowser.openBrowserAsync(`${SITE_URL}/privacy#sms`)}>Privacy</Text>
+                </Text>
+              </View>
+            )}
           </Card>
 
           <Card>
@@ -459,14 +526,26 @@ export default function Checkout() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: S.lg, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line }}>
+      <ActionBar>
         <Button
           label={preparing && !clientSecret && !covered ? 'Getting payment ready' : covered ? 'Place order' : `Pay  ·  $${(creditApplied > 0 ? cardPart : totals.total).toFixed(2)}`}
           onPress={pay}
           // while the payment is being prepared the button shows a spinner (orange), not a grey dead button
           loading={paying || (preparing && !clientSecret && !covered)}
         />
-      </View>
+      </ActionBar>
+      <AddressForm
+        address={editingAddress}
+        onClose={() => setEditingAddress(null)}
+        onSaved={() => {
+          const id = editingAddress?._id?.toString();
+          setEditingAddress(null);
+          void reloadAddresses();
+          // the cart picks up the changed address
+          if (id) void updateAddress(id).catch(() => {});
+          toast('Address saved');
+        }}
+      />
     </SafeAreaView>
   );
 }

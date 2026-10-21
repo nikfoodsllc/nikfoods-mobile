@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { DEFAULT_MIN_CART_VALUE, getCheckoutMessage } from '@/lib/cartLogic';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
+import ActionBar, { ACTION_BAR_SPACE } from '@/components/ActionBar';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function CartScreen() {
@@ -35,7 +36,7 @@ export default function CartScreen() {
             <Ionicons name="bag-outline" size={44} color={C.brandDark} />
           </View>
           <Text weight="bold" size={22}>Your cart is empty</Text>
-          <Button label="Browse the menu" onPress={() => router.navigate('/')} style={{ marginTop: S.md, alignSelf: 'stretch' }} />
+          <Button label="Browse the menu" onPress={() => router.navigate('/menu')} style={{ marginTop: S.md, alignSelf: 'stretch' }} />
         </View>
       </SafeAreaView>
     );
@@ -64,7 +65,7 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace, gap: S.lg }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace + ACTION_BAR_SPACE, gap: S.lg }} showsVerticalScrollIndicator={false}>
         <Text weight="display" size={44}>Cart</Text>
         <DeliveryBar />
 
@@ -121,20 +122,20 @@ export default function CartScreen() {
         {!hasAddress && <Text size={14} color={C.muted} style={{ textAlign: 'center' }}>Add your zip code to continue</Text>}
       </ScrollView>
 
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: S.lg, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line }}>
+      <ActionBar>
         {!user ? (
           <Button label="Log in to check out" onPress={go} />
         ) : !hasAddress ? (
           <Button label="Choose a delivery address first" disabled onPress={go} />
         ) : !canCheckout && needsMore ? (
           // the minimum is not reached: the button says so and takes you back to the menu to add more
-          <Button label="Add more items" icon="add" onPress={() => router.navigate('/')} />
+          <Button label="Add more items" icon="add" onPress={() => router.navigate('/menu')} />
         ) : !canCheckout ? (
           <Button label="Fix the items above to check out" disabled onPress={go} />
         ) : (
           <Button label={`Checkout  ·  $${cart.totalAmount.toFixed(2)}`} onPress={go} />
         )}
-      </View>
+      </ActionBar>
     </SafeAreaView>
   );
 }

@@ -7,10 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { deliveryOf } from '@/components/OrderParts';
 import { Button, Card, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
+import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { useApiClient } from '@/hooks/useApiClient';
 import { Order } from '@/types/order';
 
 export default function CheckoutSuccess() {
+  const bottomSpace = useTabBarSpace(false);
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const router = useRouter();
   const { authenticatedFetch } = useApiClient();
@@ -34,7 +36,7 @@ export default function CheckoutSuccess() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: S.xxl * 1.5, alignItems: 'center' }}>
+      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: S.xxl * 1.5, paddingBottom: bottomSpace, alignItems: 'center' }}>
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: C.greenBg, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="checkmark" size={42} color={C.white} />
@@ -64,7 +66,7 @@ export default function CheckoutSuccess() {
 
         <View style={{ alignSelf: 'stretch', gap: S.sm, marginTop: S.xl }}>
           <Button label="View order" onPress={() => router.replace({ pathname: '/account/orders/[id]', params: { id: String(orderId) } })} />
-          <Button label="Back to the menu" variant="ghost" onPress={() => router.replace('/')} />
+          <Button label="Back to the menu" variant="ghost" onPress={() => router.replace('/menu')} />
         </View>
       </ScrollView>
     </SafeAreaView>
