@@ -187,7 +187,7 @@ export default function Menu() {
   }, [categories, map, selectedCategory, vegOnly, availableDates, searching]);
 
   const rows = useMemo(() => {
-    const out: Row[] = searching ? [] : [{ type: 'chips', key: 'chips' }];
+    const out: Row[] = [{ type: 'chips', key: 'chips' }];
     const pairs = (items: Cell[], key: string) => {
       for (let i = 0; i < items.length; i += 2) out.push({ type: 'pair', key: `${key}-${i}`, cells: items.slice(i, i + 2) });
     };
@@ -292,7 +292,7 @@ export default function Menu() {
   });
   const viewConfig = useRef({ itemVisiblePercentThreshold: 10 });
   const stickyRow = useMemo(() => (stickyKey ? (rows.find((r) => r.type === 'dates' && r.key === stickyKey) as DatesRow | undefined) ?? null : null), [rows, stickyKey]);
-  const listExtra = useMemo(() => ({ cart, stickyKey, dateByCat, chipsMore }), [cart, stickyKey, dateByCat, chipsMore]);
+  const listExtra = useMemo(() => ({ cart, stickyKey, dateByCat, chipsMore, query }), [cart, stickyKey, dateByCat, chipsMore, query]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -304,8 +304,13 @@ export default function Menu() {
     void cart;
   }, [cart]);
 
+  // the search box and the category chips are ONE sticky bar under the address: they stay on screen while you scroll
   const renderChips = () => (
     <View style={{ backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line }}>
+      <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.xs }}>
+        <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
+      </View>
+      {!searching && (
       <View>
       <ScrollView
         ref={chipsRef}
@@ -375,6 +380,7 @@ export default function Menu() {
         </View>
       )}
       </View>
+      )}
       {stickyRow && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ borderTopWidth: 1, borderTopColor: C.line }} contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: 6, gap: S.sm }} keyboardShouldPersistTaps="handled">
           {stickyRow.dates.map((d) => {
@@ -465,7 +471,6 @@ export default function Menu() {
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E5E7EB' }} accessibilityLabel="Veg only" />
         </View>
       </View>
-      <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
       <MenuSubscribe />
       <DeliveryBar />
     </View>
@@ -506,7 +511,7 @@ export default function Menu() {
         keyExtractor={(r) => r.key}
         renderItem={renderRow}
         ListHeaderComponent={header}
-        stickyHeaderIndices={searching ? [] : [1]}
+        stickyHeaderIndices={[1]}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
