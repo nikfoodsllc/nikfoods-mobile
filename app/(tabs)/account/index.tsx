@@ -113,12 +113,12 @@ export default function Account() {
   if (!user) {
     return (
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-        <ScrollView contentContainerStyle={{ padding: S.xl, gap: S.md, flexGrow: 1, justifyContent: 'center' }}>
+        <ScrollView contentContainerStyle={{ padding: S.xl, paddingBottom: bottomSpace, gap: S.md, flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
           <View style={{ alignItems: 'center', gap: S.md, marginBottom: S.xl }}>
-            <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: C.cream, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="person-outline" size={40} color={C.brandDark} />
+            <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="person-outline" size={38} color={C.brand} />
             </View>
-            <Text weight="bold" size={24}>Your account</Text>
+            <Text weight="display" size={38}>Your account</Text>
             <Text size={15} color={C.muted} style={{ textAlign: 'center' }}>Log in to check out, track orders and save addresses</Text>
           </View>
           <Button label="Log in" onPress={() => router.push('/login')} />
