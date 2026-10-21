@@ -1,12 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CartBar from '@/components/CartBar';
-import DeliveryBar from '@/components/DeliveryBar';
 import DeliveryTracker from '@/components/DeliveryTracker';
+import HomeBanners from '@/components/HomeBanners';
 import MenuSubscribe from '@/components/MenuSubscribe';
 import { deliveryOf, StatusChip } from '@/components/OrderParts';
 import Reveal from '@/components/Reveal';
@@ -14,19 +14,11 @@ import { Button, Card, Eyebrow, Text, tap } from '@/components/ui';
 import { C, S, shadow } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
-import { buildMenuSections, categoryOrSubsHaveItems } from '@/lib/homeMenu';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
-import { useVegOnly } from '@/lib/vegOnly';
 import { Order } from '@/types/order';
 
 const logo = require('../../assets/images/nikfoods-logo.png');
-
-/** "Good evening" by the hour (Pacific time, where the kitchen is). */
-function greetingNow(): string {
-  const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/Los_Angeles' }).format(new Date())) % 24;
-  return hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-}
 
 /** Home: where you are delivering, your next delivery, a way into the menu and the menu alerts. */
 export default function Home() {
@@ -34,8 +26,7 @@ export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
   const { authenticatedFetch } = useApiClient();
-  const { categories, map, availableDates, reload } = useHomeMenu();
-  const [vegOnly] = useVegOnly();
+  const { reload } = useHomeMenu();
   const [next, setNext] = useState<Order | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -61,10 +52,6 @@ export default function Home() {
     void loadNext();
   }, [loadNext]);
 
-  const cats = useMemo(
-    () => buildMenuSections(categories, map, '', vegOnly, availableDates).filter((s) => s.category && categoryOrSubsHaveItems(s.category)).map((s) => s.meta),
-    [categories, map, vegOnly, availableDates]
-  );
   const first = (user?.name ?? '').trim().split(/\s+/)[0];
   const nextDay = next ? next.items.slice().sort((a, b) => String(a.actualDeliveryDate || a.deliveryDate).localeCompare(String(b.actualDeliveryDate || b.deliveryDate)))[0] : null;
 
@@ -78,13 +65,8 @@ export default function Home() {
       >
         <Reveal index={0}>
           <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
-          <Eyebrow style={{ marginTop: S.xl }}>{greetingNow()}</Eyebrow>
-          <Text weight="display" size={46} style={{ marginTop: 2 }}>{first ? `${first},` : 'Welcome,'}</Text>
+          <Text weight="display" size={46} style={{ marginTop: S.xl }}>{first ? `${first},` : 'Welcome,'}</Text>
           <Text weight="display" size={46} color={C.brandDark}>what shall we cook?</Text>
-        </Reveal>
-
-        <Reveal index={1}>
-          <DeliveryBar />
         </Reveal>
 
         {next && nextDay && (
@@ -120,24 +102,9 @@ export default function Home() {
           </Pressable>
         </Reveal>
 
-        {cats.length > 0 && (
-          <Reveal index={4} style={{ gap: S.lg }}>
-            <View>
-              <Eyebrow>Browse</Eyebrow>
-              <Text weight="display" size={32} style={{ marginTop: 2 }}>By category</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -S.xl }} contentContainerStyle={{ gap: S.lg, paddingHorizontal: S.xl }}>
-              {cats.map((c) => (
-                <Pressable key={c._id} onPress={() => { tap(); router.push({ pathname: '/menu/[id]', params: { id: c._id } }); }} accessibilityRole="button" accessibilityLabel={c.name} style={({ pressed }) => ({ width: 112, opacity: pressed ? 0.8 : 1 })}>
-                  <View style={[{ width: 112, height: 132, borderRadius: 56, overflow: 'hidden', backgroundColor: C.surface, borderWidth: 3, borderColor: C.white }, shadow]}>
-                    {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={250} /> : null}
-                  </View>
-                  <Text weight="semibold" size={14} numberOfLines={2} maxFontSizeMultiplier={1.2} style={{ marginTop: S.sm, textAlign: 'center' }}>{c.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Reveal>
-        )}
+        <Reveal index={4}>
+          <HomeBanners />
+        </Reveal>
 
         <Reveal index={5}>
           <MenuSubscribe />
