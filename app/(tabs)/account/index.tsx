@@ -225,7 +225,7 @@ export default function Account() {
           </View>
           <View style={{ flex: 1 }}>
             <Text weight="bold" size={18} numberOfLines={1}>{user.name}</Text>
-            <Text size={14} color={C.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{user.email}</Text>
+            <Text size={14} color={C.muted} numberOfLines={1} ellipsizeMode="middle">{user.email}</Text>
             {!!user.phone && <Text size={14} color={C.muted}>{user.phone}</Text>}
           </View>
           <Pressable onPress={openEdit} hitSlop={10} accessibilityLabel="Edit profile"><Ionicons name="create-outline" size={22} color={C.body} /></Pressable>

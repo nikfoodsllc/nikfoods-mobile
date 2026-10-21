@@ -93,7 +93,7 @@ export default function OrderDetail() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.lg, paddingVertical: S.md }}>
-        <Pressable onPress={() => router.navigate('/account/orders')} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/account/orders'))} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
         <Text weight="display" size={32} style={{ marginLeft: S.md }}>Order</Text>
