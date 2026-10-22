@@ -4,10 +4,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppLock from '@/components/AppLock';
 import PushBridge from '@/components/PushBridge';
@@ -80,7 +80,12 @@ function Nav() {
   }, [router]);
 
   // the website code sends visitors to '/' when a session expired: show the sign-in screen
-  useEffect(() => onRedirect(() => router.replace('/login')), [router]);
+  // (pushed over the screen that needed it, not replacing it: after signing in you are back on that screen, for example the order
+  // a "View my order" link opened)
+  const pathname = usePathname();
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
+  useEffect(() => onRedirect(() => { if (pathRef.current !== '/login') router.push('/login'); }), [router]);
 
   return (
     <>
@@ -92,6 +97,8 @@ function Nav() {
         <Stack.Screen name="signup" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="forgot-password" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="chat" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="pay/[orderId]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="web" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
     </>
   );

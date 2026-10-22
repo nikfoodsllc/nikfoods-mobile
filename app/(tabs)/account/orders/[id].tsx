@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackActions, useNavigation } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { deliveryOf, ItemRow, StatusChip } from '@/components/OrderParts';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { formatOrderDate } from '@/lib/orderHelpers';
 import { getNetTotal, getRefundedAmount } from '@/lib/orderRefunds';
@@ -36,8 +37,21 @@ export default function OrderDetail() {
   const [error, setError] = useState('');
 
   // reload every time the screen comes into view (a notification can change the order, e.g. a new delivery date, while it is open)
+  // (also when someone signs in while it is open: a "View my order" link opens this screen first, then asks for the login)
+  const { user, isLoading: authLoading } = useAuth();
+  const userId = user?.id ?? '';
+  const asked = useRef(false);
+  useEffect(() => {
+    // nobody signed in (a link from an email): ask for the sign-in once, over this screen; signing in brings the order up
+    if (authLoading || userId || asked.current) return;
+    asked.current = true;
+    router.push('/login');
+  }, [authLoading, userId, router]);
   useFocusEffect(
     useCallback(() => {
+    // a link can open this screen before anyone has signed in: wait for the sign-in instead of showing an error
+    if (!userId) return;
+    setError('');
     (async () => {
       try {
         const r = await authenticatedFetch(`/api/orders/${encodeURIComponent(String(id))}`);
@@ -48,11 +62,12 @@ export default function OrderDetail() {
         setError(e instanceof Error ? e.message : 'Could not load the order');
       }
     })();
-    }, [id, authenticatedFetch])
+    }, [id, authenticatedFetch, userId])
   );
 
   const body = () => {
     if (error) return <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>{error}</Text>;
+    if (!order && !userId) return <Text color={C.muted} style={{ textAlign: 'center', marginTop: 40 }}>Log in to see your order</Text>;
     if (!order) return <ActivityIndicator color={C.brand} style={{ marginTop: 40 }} />;
     const refunded = getRefundedAmount(order);
     const fees = taxesAndFeesOf({ taxes: order.taxes, platformFee: order.platformFee, deliveryFee: order.deliveryFee });

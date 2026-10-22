@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CartLine from '@/components/CartLine';
 import DeliveryBar from '@/components/DeliveryBar';
@@ -10,6 +10,8 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Text } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApiClient } from '@/hooks/useApiClient';
+import * as localCart from '@/lib/localStorageCart';
 import { useCart } from '@/contexts/CartContext';
 import { DEFAULT_MIN_CART_VALUE, getCheckoutMessage } from '@/lib/cartLogic';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
@@ -21,9 +23,50 @@ export default function CartScreen() {
   const router = useRouter();
   const toast = useToast();
   const { user } = useAuth();
-  const { cart, isLoading, updateCartItem, removeCartItem, selectedAddressId, selectedZipcode, zipcodeConfig } = useCart();
+  const { cart, isLoading, updateCartItem, removeCartItem, selectedAddressId, selectedZipcode, zipcodeConfig, refreshCart } = useCart();
 
   const hasItems = Boolean(cart && cart.days.some((d) => d.items.length > 0));
+  const { authenticatedFetch } = useApiClient();
+  const { restore, r } = useLocalSearchParams<{ restore?: string; r?: string }>();
+
+  // The cart reminder email's "Complete your order" opens /cart?restore=1&r=...: log in (once), put back the unfinished checkout when
+  // this cart is empty, and carry on to checkout (the same steps as the website's cart page).
+  const clickSent = useRef(false);
+  const prompted = useRef(false);
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restore !== '1' || !r || clickSent.current) return;
+    clickSent.current = true;
+    fetch('/api/cart-reminder/clicked', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: String(r) }) }).catch(() => undefined);
+  }, [restore, r]);
+  useEffect(() => {
+    if (restore !== '1') return;
+    if (!user) {
+      if (!prompted.current) {
+        prompted.current = true;
+        router.push('/login');
+      }
+      return;
+    }
+    if (restored.current) return;
+    restored.current = true;
+    (async () => {
+      try {
+        if (!localCart.hasItems()) {
+          const response = await authenticatedFetch('/api/cart/restore', { method: 'POST' });
+          const json = await response.json().catch(() => null);
+          const lines = json?.data?.lines;
+          if (response.ok && Array.isArray(lines) && lines.length > 0 && localCart.restoreLines(lines) > 0) await refreshCart();
+        }
+      } catch {
+        // the empty cart is shown instead
+      } finally {
+        router.setParams({ restore: '', r: '' });
+        if (localCart.hasItems()) router.push('/cart/checkout');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restore, user]);
 
   if (isLoading && !cart) {
     return <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }} />;
