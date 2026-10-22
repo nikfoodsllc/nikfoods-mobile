@@ -12,7 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppLock from '@/components/AppLock';
 import PushBridge from '@/components/PushBridge';
 import { ToastProvider } from '@/components/Toast';
-import { APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
+import { APP_SCHEME, APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
 import { C } from '@/constants/theme';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
@@ -47,7 +47,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'} merchantIdentifier={APPLE_MERCHANT_ID} urlScheme="nikfoodsmobile">
+      <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'} merchantIdentifier={APPLE_MERCHANT_ID} urlScheme={APP_SCHEME}>
         <ToastProvider>
           <AuthProvider>
             <CartProvider>

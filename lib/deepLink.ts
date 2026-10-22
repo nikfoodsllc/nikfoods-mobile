@@ -2,11 +2,13 @@
  * Where a link the iPhone hands to the app should go. Only the "View my order" links in our emails and texts are claimed
  * (/account/orders?order=ORD-...), and they open the app's order screen. Anything else goes to the menu.
  */
+import { APP_SCHEME } from '@/constants/config';
+
 const SITE_HOSTS = new Set(['www.nikfoods.com', 'nikfoods.com', 'livesite-dev.vercel.app']);
 
 export function routeForIncomingLink(input: string): string {
   // the link must be a path of this site (or a full address on one of its hosts); anything else goes Home
-  if (/^[a-z][a-z0-9+.-]*:/i.test(input) && !input.startsWith('nikfoodsmobile://')) {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(input) && !input.startsWith(`${APP_SCHEME}://`)) {
     try {
       if (!SITE_HOSTS.has(new URL(input).host)) return '/';
     } catch {
@@ -14,7 +16,7 @@ export function routeForIncomingLink(input: string): string {
     }
   }
   // the app's own scheme: nikfoodsmobile://orders/ORD-1 is the path /orders/ORD-1
-  const path = input.startsWith('nikfoodsmobile://') ? `/${input.slice('nikfoodsmobile://'.length).replace(/^\/+/, '')}` : input;
+  const path = input.startsWith(`${APP_SCHEME}://`) ? `/${input.slice(`${APP_SCHEME}://`.length).replace(/^\/+/, '')}` : input;
   let pathname = '';
   let order: string | null = null;
   try {

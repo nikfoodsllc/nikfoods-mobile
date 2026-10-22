@@ -12,7 +12,7 @@ import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Text, tap } from '@/components/ui';
 import { C, FONT, R, S } from '@/constants/theme';
-import { SITE_URL } from '@/constants/config';
+import { APP_SCHEME, SITE_URL } from '@/constants/config';
 import { SMS_CONSENT_LABEL, SMS_CONSENT_SMALL_PRINT } from '@/lib/smsConsent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -341,7 +341,7 @@ export default function Checkout() {
         merchantDisplayName: 'NikFoods',
         applePay: { merchantCountryCode: 'US' },
         defaultBillingDetails: { name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') },
-        returnURL: 'nikfoodsmobile://stripe-redirect',
+        returnURL: `${APP_SCHEME}://stripe-redirect`,
         primaryButtonLabel: totals ? `Pay $${(creditApplied > 0 ? Math.max(0, totals.total - creditApplied) : totals.total).toFixed(2)}` : undefined,
         style: 'automatic',
       });

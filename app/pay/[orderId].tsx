@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Sheet, Text, tap } from '@/components/ui';
+import { APP_SCHEME } from '@/constants/config';
 import { C, S } from '@/constants/theme';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT } from '@/lib/orderTotalsDisplay';
 
@@ -114,7 +115,7 @@ export default function PayLink() {
         merchantDisplayName: 'NikFoods',
         applePay: { merchantCountryCode: 'US' },
         defaultBillingDetails: { name: c?.name, email: c?.email, phone: c?.phone },
-        returnURL: 'nikfoodsmobile://stripe-redirect',
+        returnURL: `${APP_SCHEME}://stripe-redirect`,
         primaryButtonLabel: `Pay ${money(due)}`,
         style: 'automatic',
       });
