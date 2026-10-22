@@ -22,6 +22,7 @@ export default function FoodCard({
   inCartCount,
   customizable,
   closed,
+  note,
   onPress,
   onAdd,
   onIncrement,
@@ -37,6 +38,8 @@ export default function FoodCard({
   inCartCount: number;
   customizable: boolean;
   closed?: boolean;
+  /** a small line under the name, e.g. the delivery day (Chef's Pick row) */
+  note?: string;
   onPress: () => void;
   onAdd: () => void;
   onIncrement: () => void;
@@ -62,6 +65,7 @@ export default function FoodCard({
       <View style={{ flex: 1, gap: 8 }}>
         <Pressable onPress={onPress} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Text weight="semibold" size={16} numberOfLines={3} style={{ color: C.text }}>{name}</Text>
+          {note ? <Text weight="medium" size={13} color={C.muted} style={{ marginTop: 2 }}>{note}</Text> : null}
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.sm, minHeight: 44 }}>
           {price != null ? (

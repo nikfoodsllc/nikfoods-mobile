@@ -1,14 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import CartBar from '@/components/CartBar';
-import DaySheet, { DaySelection } from '@/components/DaySheet';
 import FoodCard from '@/components/FoodCard';
-import ItemSheet from '@/components/ItemSheet';
-import { useToast } from '@/components/Toast';
+import { useMenuCart } from '@/components/useMenuCart';
 import { Button, Text, tap } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
-import * as localCart from '@/lib/localStorageCart';
 import { isFoodCustomizable } from '@/lib/foodItemUtils';
 import {
   buildMenuSections,
@@ -24,9 +21,7 @@ import {
 import { searchMenu } from '@/lib/menuSearch';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useVegOnly } from '@/lib/vegOnly';
-import { DayType } from '@/types/cart';
 import { FoodItem } from '@/types/food';
-import { CartCustomizations } from '@/types/localCart';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 type DayGroup = CategoryDisplay['dayGroups'][number];
@@ -46,115 +41,16 @@ type DatesRow = Extract<Row, { type: 'dates' }>;
  */
 export default function MenuBrowser({ categoryId = '', query = '', header = null }: { categoryId?: string; query?: string; header?: React.ReactElement | null }) {
   const bottomSpace = useTabBarSpace(true);
-  const toast = useToast();
-  const { refreshCart, cart } = useCart();
+  const { cart } = useCart();
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
   const [vegOnly] = useVegOnly();
   const selectedCategory = categoryId;
   const searching = query.trim().length > 0;
   const [dateByCat, setDateByCat] = useState<Record<string, string>>({});
-  const [sheet, setSheet] = useState<{ item: FoodItem; dayGroup?: DayGroup } | null>(null);
-  const [daySheet, setDaySheet] = useState<{ item: FoodItem; customizations?: CartCustomizations } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ---- cart helpers (same rules as the website's home page) ----
-  const dayOf = (date: string) => availableDates.find((d) => d.date === date);
-  const quantityOf = (id: string, date?: string): number => {
-    if (date) {
-      const d = dayOf(date);
-      return d?.day ? localCart.getDayQuantity(d.day as DayType, id) : 0;
-    }
-    return availableDates.reduce((n, d) => n + (d.day ? localCart.getDayQuantity(d.day as DayType, id) : 0), 0);
-  };
-  const after = async () => {
-    await refreshCart();
-  };
-
-  const addToDay = (item: FoodItem, dayGroup: DayGroup, customizations: CartCustomizations = {}, quantity = 1) => {
-    const opt = dayOf(dayGroup.date);
-    if (!opt?.day || !opt.dayWiseCategoryEnabled) {
-      toast(`${dayGroup.displayName} is not open for orders`, 'error');
-      return false;
-    }
-    const { __dayGroup, ...clean } = item as FoodItem & { __dayGroup?: unknown };
-    void __dayGroup;
-    localCart.addItem(opt.day as DayType, dayGroup.date, clean as FoodItem, quantity, customizations);
-    void after();
-    return true;
-  };
-
-  const incrementOnDay = (item: FoodItem, dayGroup: DayGroup) => {
-    const opt = dayOf(dayGroup.date);
-    if (!opt?.day || !opt.dayWiseCategoryEnabled) {
-      toast(`${dayGroup.displayName} is not open for orders`, 'error');
-      return;
-    }
-    const day = opt.day as DayType;
-    const line = localCart.getFirstLineForFoodOnDay(day, item._id);
-    if (line) localCart.updateQuantity(day, line.lineId, line.quantity + 1);
-    else localCart.addItem(day, dayGroup.date, item, 1, {});
-    void after();
-  };
-
-  const decrement = (id: string, dayGroup?: DayGroup) => {
-    if (dayGroup) {
-      const opt = dayOf(dayGroup.date);
-      const day = (opt?.day || dayGroup.day) as DayType | undefined;
-      if (day && localCart.getDayQuantity(day, id) > 0) {
-        localCart.decrementOneUnitForFoodOnDay(day, id);
-        void after();
-      }
-      return;
-    }
-    for (const d of availableDates) {
-      if (!d.day) continue;
-      if (localCart.getDayQuantity(d.day as DayType, id) > 0) {
-        localCart.decrementOneUnitForFoodOnDay(d.day as DayType, id);
-        void after();
-        break;
-      }
-    }
-  };
-
-  const onAdd = (item: FoodItem, dayGroup?: DayGroup) => {
-    if (isFoodCustomizable(item)) {
-      setSheet({ item, dayGroup });
-      return;
-    }
-    if (dayGroup) {
-      if (addToDay(item, dayGroup)) tap();
-      return;
-    }
-    setDaySheet({ item });
-  };
-
-  const onIncrement = (item: FoodItem, dayGroup?: DayGroup) => {
-    if (dayGroup) {
-      incrementOnDay(item, dayGroup);
-      return;
-    }
-    setDaySheet({ item });
-  };
-
-  const onSheetAdd = (item: FoodItem, customizations: CartCustomizations, quantity: number) => {
-    const target = sheet?.dayGroup;
-    setSheet(null);
-    if (target) {
-      if (addToDay(item, target, customizations, quantity)) toast('Added');
-    } else {
-      setDaySheet({ item, customizations });
-    }
-  };
-
-  const onDaysConfirm = (selected: DaySelection[]) => {
-    if (!daySheet) return;
-    for (const s of selected) {
-      localCart.addItem(s.day, s.date, daySheet.item, s.quantity, { ...(daySheet.customizations ?? {}), listingType: 'flat' });
-    }
-    setDaySheet(null);
-    toast('Added');
-    void after();
-  };
+  // ---- cart helpers (shared with the Chef's Pick row on Home) ----
+  const { dayOf, quantityOf, onAdd, onIncrement, decrement, openItem, sheets } = useMenuCart(availableDates);
 
   // ---- shaping the menu (same rules as the website) ----
   const sections = useMemo(
@@ -445,7 +341,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
                   customizable={custom}
                   quantity={custom ? 0 : inCart}
                   inCartCount={inCart}
-                  onPress={() => setSheet({ item, dayGroup })}
+                  onPress={() => openItem(item, dayGroup)}
                   onAdd={() => onAdd(item, dayGroup)}
                   onIncrement={() => onIncrement(item, dayGroup)}
                   onDecrement={() => decrement(item._id, dayGroup)}
@@ -483,9 +379,6 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
       </View>
     );
   }
-
-  const sheetDay = sheet?.dayGroup ? dayOf(sheet.dayGroup.date) : undefined;
-  const sheetClosed = sheet?.dayGroup && sheetDay && (sheetDay.dayWisePastCutoff || sheetDay.dayWiseCategoryEnabled === false) ? 'Ordering closed' : undefined;
 
   const subTabs = showSubTabs ? (
     <View style={{ backgroundColor: C.bg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line }}>
@@ -539,8 +432,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
       />
       {pinnedBar}
       <CartBar />
-      <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} withQuantity={Boolean(sheet?.dayGroup)} />
-      <DaySheet item={daySheet?.item ?? null} customizations={daySheet?.customizations} onClose={() => setDaySheet(null)} onConfirm={onDaysConfirm} />
+      {sheets}
     </View>
     </View>
   );

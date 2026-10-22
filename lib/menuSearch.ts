@@ -25,12 +25,11 @@ export function matchesQuery(name: string, query: string): boolean {
 }
 
 /**
- * The dishes whose name matches, across the whole menu: first by delivery day (earliest first), then the ones that are not tied to a
+ * Every dish `keep` accepts, across the whole menu: first by delivery day (earliest first), then the ones that are not tied to a
  * day, by category. A dish that is on two days shows under both. The cells are the same shape the menu's own rows use, so the dish
  * cards and Add buttons behave exactly the same.
  */
-export function searchMenu(categories: Array<{ name: string; category: CategoryDisplay | null }>, query: string): SearchGroup[] {
-  if (!clean(query).trim()) return [];
+export function collectDishes(categories: Array<{ name: string; category: CategoryDisplay | null }>, keep: (item: FoodItem) => boolean): SearchGroup[] {
   const byDate = new Map<string, SearchGroup>();
   const flat: SearchGroup[] = [];
   const seen = new Set<string>();
@@ -44,7 +43,7 @@ export function searchMenu(categories: Array<{ name: string; category: CategoryD
 
   const walk = (c: CategoryDisplay, label: string) => {
     for (const g of c.dayGroups ?? []) {
-      const hits = g.foodItems.filter((it) => matchesQuery(it.name, query));
+      const hits = g.foodItems.filter(keep);
       if (hits.length === 0) continue;
       let group = byDate.get(g.date);
       if (!group) {
@@ -54,7 +53,7 @@ export function searchMenu(categories: Array<{ name: string; category: CategoryD
       for (const it of hits) add(group, it, g);
     }
     if ((c.listingType ?? 'flat') === 'flat') {
-      const hits = (c.foodItems ?? []).filter((it) => matchesQuery(it.name, query));
+      const hits = (c.foodItems ?? []).filter(keep);
       if (hits.length > 0) {
         let group = flat.find((x) => x.title === label);
         if (!group) {
@@ -69,4 +68,10 @@ export function searchMenu(categories: Array<{ name: string; category: CategoryD
 
   for (const { name, category } of categories) if (category) walk(category, name);
   return [...[...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)), ...flat];
+}
+
+/** The dishes whose name matches the search (see collectDishes). */
+export function searchMenu(categories: Array<{ name: string; category: CategoryDisplay | null }>, query: string): SearchGroup[] {
+  if (!clean(query).trim()) return [];
+  return collectDishes(categories, (it) => matchesQuery(it.name, query));
 }

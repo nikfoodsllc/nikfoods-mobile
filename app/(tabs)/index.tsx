@@ -6,6 +6,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CartBar from '@/components/CartBar';
+import ChefsPick from '@/components/ChefsPick';
 import DeliveryTracker from '@/components/DeliveryTracker';
 import HomeBanners from '@/components/HomeBanners';
 import MenuSubscribe from '@/components/MenuSubscribe';
@@ -96,6 +97,9 @@ export default function Home() {
         <Reveal index={1}>
           <HomeBanners scrollY={scrollY} />
         </Reveal>
+
+        {/* the dishes the admin marked Chef's Pick (nothing is drawn when there are none) */}
+        <ChefsPick />
 
         {next && nextDay && (
           <Reveal index={2} style={{ gap: S.md }}>
