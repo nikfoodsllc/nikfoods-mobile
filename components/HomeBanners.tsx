@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Text, tap } from '@/components/ui';
-import Animated, { SharedValue, useAnimatedStyle, useReducedMotion } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { C, S, shadow } from '@/constants/theme';
 
 // The banners the admin sets up (Food Catalog > Banners): the same list the website shows. Each picture keeps its own shape, so the
@@ -26,14 +26,10 @@ const DEFAULT_SECONDS = 5;
 const DEFAULT_RATIO = 2; // until a picture has loaded
 let cached: Banner[] | null = null;
 
-// The picture is drawn a little taller than its frame and drifts slower than the page as you scroll (a quiet parallax).
-const DRIFT = 0.04; // tiny: the picture is only 12 px taller than its frame, so its edges are never cut
+const RADIUS = 20; // gentle corners: a rounder frame cut into the corners of the pictures
 
-export default function HomeBanners({ scrollY }: { scrollY?: SharedValue<number> }) {
-  const reduce = useReducedMotion();
-  const drift = useAnimatedStyle(() => ({
-    transform: [{ translateY: scrollY && !reduce ? Math.max(-6, Math.min(6, scrollY.value * DRIFT)) : 0 }],
-  }));
+// `scrollY` is still passed by Home; the picture no longer drifts with it, so its whole edge stays visible.
+export default function HomeBanners(_props: { scrollY?: SharedValue<number> }) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [banners, setBanners] = useState<Banner[]>(cached ?? []);
@@ -94,8 +90,8 @@ export default function HomeBanners({ scrollY }: { scrollY?: SharedValue<number>
 
   return (
     <View style={{ gap: S.sm }} accessibilityLabel="Promotions">
-      <View style={[{ height, borderRadius: 32, backgroundColor: C.surface }, shadow]}>
-        <View style={{ flex: 1, borderRadius: 32, overflow: 'hidden' }}>
+      <View style={[{ height, borderRadius: RADIUS, backgroundColor: C.surface }, shadow]}>
+        <View style={{ flex: 1, borderRadius: RADIUS, overflow: 'hidden' }}>
         <FlatList
           ref={list}
           data={banners}
@@ -124,10 +120,10 @@ export default function HomeBanners({ scrollY }: { scrollY?: SharedValue<number>
                 accessibilityLabel={[item.title, item.subtitle].filter(Boolean).join('. ') || 'NikFoods'}
                 style={{ width: w }}
               >
-                <Animated.View style={[{ height: Math.round(w / ratio) }, drift]}>
+                <View style={{ height: Math.round(w / ratio) }}>
                 <Image
                   source={{ uri: item.imageUrl }}
-                  style={{ width: w, height: Math.round(w / ratio) + 12, marginTop: -6 }}
+                  style={{ width: w, height: Math.round(w / ratio) }}
                   contentFit="cover"
                   transition={250}
                   onLoad={(e) => {
@@ -135,7 +131,7 @@ export default function HomeBanners({ scrollY }: { scrollY?: SharedValue<number>
                     if (iw && ih) setRatios((r) => (r[item.id] ? r : { ...r, [item.id]: iw / ih }));
                   }}
                 />
-                </Animated.View>
+                </View>
                 {(item.title || item.subtitle) && (
                   <LinearGradient colors={['rgba(26,20,16,0)', 'rgba(26,20,16,0.72)']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: S.lg, paddingTop: 44 }} pointerEvents="none">
                     {item.title ? <Text weight="display" size={26} color="#fff">{item.title}</Text> : null}

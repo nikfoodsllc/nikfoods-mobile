@@ -16,10 +16,12 @@ import { Button, Card, Eyebrow, Text, tap } from '@/components/ui';
 import { C, S, shadow } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
+import { greeting, useHomeIntro } from '@/lib/homeIntro';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { Order } from '@/types/order';
 
+const GREETING_BOX = 112; // two lines of the display type
 const logo = require('../../assets/images/nikfoods-logo.png');
 
 /** Home: where you are delivering, your next delivery, a way into the menu and the menu alerts. */
@@ -31,6 +33,7 @@ export default function Home() {
   const { reload } = useHomeMenu();
   const [next, setNext] = useState<Order | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const intro = useHomeIntro();
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
@@ -45,7 +48,7 @@ export default function Home() {
       const r = await authenticatedFetch('/api/orders?status=active&limit=5');
       const j = await r.json();
       if (!r.ok || !j.success) return;
-      const orders = (j.data.items as Order[]).filter((o) => o.paymentStatus !== 'failed');
+      const orders = (j.data.items as Order[]).filter((o) => o.status === 'confirmed' && o.paymentStatus !== 'failed');
       // the order that is delivered first
       const first = (o: Order) => o.items.map((d) => String(d.actualDeliveryDate || d.deliveryDate).slice(0, 10)).sort()[0] ?? '9999';
       setNext(orders.sort((a, b) => first(a).localeCompare(first(b)))[0] ?? null);
@@ -59,6 +62,7 @@ export default function Home() {
   }, [loadNext]);
 
   const first = (user?.name ?? '').trim().split(/\s+/)[0];
+  const hello = greeting(intro, first);
   const nextDay = next ? next.items.slice().sort((a, b) => String(a.actualDeliveryDate || a.deliveryDate).localeCompare(String(b.actualDeliveryDate || b.deliveryDate)))[0] : null;
 
   return (
@@ -73,8 +77,17 @@ export default function Home() {
       >
         <Reveal index={0}>
           <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
-          <Text weight="display" size={46} style={{ marginTop: S.xl }}>{first ? `${first},` : 'Welcome,'}</Text>
-          <Text weight="display" size={46} color={C.brandDark}>what shall we cook?</Text>
+          {/* a fixed box: whatever the text is, it shrinks until it fits */}
+          <View style={{ height: GREETING_BOX, marginTop: S.xl, justifyContent: 'center' }}>
+            {'custom' in hello ? (
+              <Text weight="display" size={46} color={C.brandDark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.4} style={{ maxHeight: GREETING_BOX }}>{hello.custom}</Text>
+            ) : (
+              <>
+                <Text weight="display" size={46} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{hello.name}</Text>
+                <Text weight="display" size={46} color={C.brandDark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{hello.question}</Text>
+              </>
+            )}
+          </View>
         </Reveal>
 
         <Reveal index={3}>
@@ -103,7 +116,7 @@ export default function Home() {
 
         {next && nextDay && (
           <Reveal index={2} style={{ gap: S.md }}>
-            <Pressable onPress={() => router.push({ pathname: '/account/orders/[id]', params: { id: next.orderId, from: 'home' } })} accessibilityRole="button" accessibilityLabel="Your next delivery">
+            <Pressable onPress={() => router.navigate({ pathname: '/account/orders/[id]', params: { id: next.orderId, from: 'home' } }, { withAnchor: true })} accessibilityRole="button" accessibilityLabel="Your next delivery">
               <Card>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: S.md }}>
                   <Eyebrow color={C.muted}>Your next delivery</Eyebrow>
@@ -123,7 +136,7 @@ export default function Home() {
 
         {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
 
-        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic taste</Eyebrow>
+        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic Indian food delivered to your doorstep.</Eyebrow>
 
       </Animated.ScrollView>
       <CartBar />
