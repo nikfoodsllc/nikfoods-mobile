@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CartLine from '@/components/CartLine';
 import DeliveryBar from '@/components/DeliveryBar';
+import EmptyCart from '@/components/EmptyCart';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Text } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
@@ -30,14 +31,8 @@ export default function CartScreen() {
 
   if (!hasItems || !cart) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: S.xxl, gap: S.md }}>
-          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: C.cream, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="bag-outline" size={44} color={C.brandDark} />
-          </View>
-          <Text weight="bold" size={22}>Your cart is empty</Text>
-          <Button label="Browse the menu" onPress={() => router.navigate('/menu')} style={{ marginTop: S.md, alignSelf: 'stretch' }} />
-        </View>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg, paddingBottom: bottomSpace }}>
+        <EmptyCart onOrder={() => router.navigate('/menu')} />
       </SafeAreaView>
     );
   }
