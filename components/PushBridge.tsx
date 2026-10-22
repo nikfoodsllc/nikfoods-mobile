@@ -41,7 +41,8 @@ export default function PushBridge() {
       if (wasAskedBefore() || (await pushState()) !== 'undetermined') return;
       markAsked();
       const state = await askForPush();
-      if (state === 'granted' && userRef.current) void registerPush(authenticatedFetch);
+      // also when the answer was No: the site is told either way
+      if (state !== 'unavailable' && userRef.current) void registerPush(authenticatedFetch);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

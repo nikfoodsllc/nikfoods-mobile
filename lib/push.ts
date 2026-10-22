@@ -15,6 +15,7 @@ type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 const TOKEN_KEY = 'pushToken';
 const ASKED_KEY = 'pushAsked';
+const INSTALL_KEY = 'pushInstallId';
 
 /** A notification shown while the app is open appears as a banner, like any other. */
 export function configureNotifications(): void {
@@ -56,9 +57,40 @@ async function expoToken(): Promise<string | null> {
   }
 }
 
-/** Tells the site about this phone (when the customer allowed notifications). Quiet: returns false when it cannot. */
+/** A random id made on the first start of this install (not the phone's own id): lets the site tell this phone's reports apart. */
+function installId(): string {
+  let id = localStorage.getItem(INSTALL_KEY);
+  if (!id) {
+    id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random().toString(36).slice(2, 12)}`;
+    localStorage.setItem(INSTALL_KEY, id);
+  }
+  return id;
+}
+
+/**
+ * Tells the site whether this phone allows notifications (also Not allowed and Not asked yet), so the admin can see it. When the phone
+ * no longer allows them, the push token we still hold is handed over so the site forgets it. Quiet: a failure is ignored.
+ */
+async function reportPermission(authenticatedFetch: Fetcher, state: PushState): Promise<void> {
+  if (state === 'unavailable') return;
+  try {
+    const token = localStorage.getItem(TOKEN_KEY) ?? undefined;
+    const r = await authenticatedFetch('/api/push/device', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ installId: installId(), permission: state, platform: 'ios', deviceName: Device.deviceName ?? '', appVersion: Constants.expoConfig?.version ?? '', ...(state !== 'granted' && token ? { token } : {}) }),
+    });
+    if (r.ok && state !== 'granted') localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // reported again the next time the app opens
+  }
+}
+
+/** Tells the site about this phone (when the customer allowed notifications) and whether it is allowed. Quiet: returns false when it cannot. */
 export async function registerPush(authenticatedFetch: Fetcher): Promise<boolean> {
-  if ((await pushState()) !== 'granted') return false;
+  const state = await pushState();
+  void reportPermission(authenticatedFetch, state);
+  if (state !== 'granted') return false;
   const token = await expoToken();
   if (!token) return false;
   try {
