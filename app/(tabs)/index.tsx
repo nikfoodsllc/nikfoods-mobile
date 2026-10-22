@@ -80,7 +80,9 @@ export default function Home() {
           {/* a fixed box: whatever the text is, it shrinks until it fits */}
           <View style={{ height: GREETING_BOX, marginTop: S.xl, justifyContent: 'center' }}>
             {'custom' in hello ? (
-              <Text weight="display" size={46} color={C.brandDark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.4} style={{ maxHeight: GREETING_BOX }}>{hello.custom}</Text>
+              <Text weight="display" size={46} color={C.brandDark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.4} style={{ maxHeight: GREETING_BOX }}>{hello.custom.map((part, i) => (
+                  <Text key={i} weight="display" size={46} color={part.isName ? C.text : C.brandDark}>{part.text}</Text>
+                ))}</Text>
             ) : (
               <>
                 <Text weight="display" size={46} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{hello.name}</Text>

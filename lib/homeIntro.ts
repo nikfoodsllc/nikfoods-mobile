@@ -25,16 +25,23 @@ export function useHomeIntro(): string {
   return intro;
 }
 
-/** The admin's text with the first name put in; without a name the placeholder (and a comma or space left next to it) goes away. */
-export function fillIntro(intro: string, firstName: string): string {
-  const name = firstName.trim();
-  const text = name ? intro.replace(/\{name\}/gi, name) : intro.replace(/\s*\{name\}\s*,?\s*/gi, ' ');
-  return text.replace(/\s+/g, ' ').trim();
+export interface GreetingPart {
+  text: string;
+  /** the customer's first name: always drawn in ink; everything else is gold */
+  isName: boolean;
 }
 
-/** What Home draws: the admin's text as one block, or the usual two lines (name in ink, question in gold). */
-export function greeting(intro: string, firstName: string): { custom: string } | { name: string; question: string } {
-  const custom = fillIntro(intro, firstName);
-  if (custom) return { custom };
-  return { name: firstName.trim() ? `${firstName.trim()},` : 'Welcome,', question: USUAL_QUESTION };
+/** What Home draws, in order: the admin's text split around the first name (name in ink, the rest gold), or the usual two lines. */
+export function greeting(intro: string, firstName: string): { custom: GreetingPart[] } | { name: string; question: string } {
+  const name = firstName.trim();
+  // without a name the placeholder goes, and the comma that led up to it
+  const text = name ? intro : intro.replace(/,?\s*\{name\}/gi, '').replace(/^[\s,]+/, '');
+  const parts: GreetingPart[] = [];
+  text.split(/(\{name\})/i).forEach((chunk) => {
+    if (/^\{name\}$/i.test(chunk)) parts.push({ text: name, isName: true });
+    else if (chunk) parts.push({ text: chunk, isName: false });
+  });
+  const joined = parts.map((p) => p.text).join('').replace(/\s+/g, ' ').trim();
+  if (!joined) return { name: name ? `${name},` : 'Welcome,', question: USUAL_QUESTION };
+  return { custom: parts };
 }
