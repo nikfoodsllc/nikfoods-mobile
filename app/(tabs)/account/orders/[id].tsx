@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { StackActions, useNavigation } from '@react-navigation/native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CreditNotice from '@/components/CreditNotice';
@@ -18,8 +19,17 @@ import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function OrderDetail() {
   const bottomSpace = useTabBarSpace(false);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
+  // An order opened from Home (or a notification) lands inside the Profile tab. When you leave the Profile tab it is closed again, so
+  // the next visit to Profile starts at Profile and not at this order. An order opened from Profile > Orders stays as it is.
+  useEffect(() => {
+    if (from !== 'home' && from !== 'push') return;
+    const tab = navigation.getParent();
+    if (!tab) return;
+    return tab.addListener('blur', () => navigation.dispatch(StackActions.popToTop()));
+  }, [from, navigation]);
   const toast = useToast();
   const { authenticatedFetch } = useApiClient();
   const [order, setOrder] = useState<Order | null>(null);
@@ -93,7 +103,7 @@ export default function OrderDetail() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.lg, paddingVertical: S.md }}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/account/orders'))} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => (from === 'home' ? router.navigate('/') : router.canGoBack() ? router.back() : router.replace('/account/orders'))} hitSlop={12} accessibilityLabel="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
         <Text weight="display" size={32} style={{ marginLeft: S.md }}>Order</Text>

@@ -99,7 +99,7 @@ export default function Home() {
 
         {next && nextDay && (
           <Reveal index={2} style={{ gap: S.md }}>
-            <Pressable onPress={() => router.push({ pathname: '/account/orders/[id]', params: { id: next.orderId } })} accessibilityRole="button" accessibilityLabel="Your next delivery">
+            <Pressable onPress={() => router.push({ pathname: '/account/orders/[id]', params: { id: next.orderId, from: 'home' } })} accessibilityRole="button" accessibilityLabel="Your next delivery">
               <Card>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: S.md }}>
                   <Eyebrow color={C.muted}>Your next delivery</Eyebrow>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { C, FONT, R, S, shadowSm } from '@/constants/theme';
@@ -78,6 +78,15 @@ export default function DeliveryBar() {
     }
   };
 
+  // A complete 5 digit zip is applied as soon as it is typed: tapping "Set" while the keyboard is up did not register on iPhones (the
+  // first touch only closed the keyboard), so nobody has to depend on that tap. "Set" and the keyboard's Done key still work.
+  useEffect(() => {
+    if (!open || busy || !/^\d{5}$/.test(zip)) return;
+    const t = setTimeout(() => void submitZip(), 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zip, open]);
+
   const pick = (id: string) => {
     void updateAddress(id).catch(() => toast('Could not select that address', 'error'));
     setOpen(false);
@@ -105,7 +114,28 @@ export default function DeliveryBar() {
         <Ionicons name="chevron-down" size={18} color={C.muted} />
       </Pressable>
 
-      <Sheet visible={open} onClose={() => setOpen(false)} title="Deliver to">
+      <Sheet visible={open} onClose={() => setOpen(false)} title="Deliver to" footer={
+        <View>
+        <Text weight="semibold" size={15} style={{ marginBottom: S.sm }}>{user && addresses.length > 0 ? 'Or use a zip code' : 'Zip code'}</Text>
+        <View style={{ flexDirection: 'row', gap: S.sm }}>
+          <TextInput
+            value={zip}
+            onChangeText={(t) => {
+              setZip(t.replace(/[^\d-]/g, '').slice(0, 10));
+              setError('');
+            }}
+            placeholder="98109"
+            placeholderTextColor={C.faint}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            onSubmitEditing={submitZip}
+            style={[{ flex: 1, height: 52, borderRadius: R.md, borderWidth: 1.5, borderColor: error ? C.red : C.line, paddingHorizontal: S.lg, fontFamily: FONT.medium, fontSize: 17, color: C.text }, shadowSm]}
+          />
+          <Button label="Set" onPress={submitZip} loading={busy} style={{ minWidth: 88 }} />
+        </View>
+        {!!error && <Text size={13} color={C.red} style={{ marginTop: S.sm }}>{error}</Text>}
+        </View>
+      }>
         {user && (
           <View style={{ marginBottom: S.lg }}>
             {addresses.map((a) => {
@@ -127,24 +157,6 @@ export default function DeliveryBar() {
             <Button variant="outline" icon="add" label="Add address" onPress={() => openForm('new')} />
           </View>
         )}
-        <Text weight="semibold" size={15} style={{ marginBottom: S.sm }}>{user && addresses.length > 0 ? 'Or use a zip code' : 'Zip code'}</Text>
-        <View style={{ flexDirection: 'row', gap: S.sm }}>
-          <TextInput
-            value={zip}
-            onChangeText={(t) => {
-              setZip(t.replace(/[^\d-]/g, '').slice(0, 10));
-              setError('');
-            }}
-            placeholder="98109"
-            placeholderTextColor={C.faint}
-            keyboardType="number-pad"
-            returnKeyType="done"
-            onSubmitEditing={submitZip}
-            style={[{ flex: 1, height: 52, borderRadius: R.md, borderWidth: 1.5, borderColor: error ? C.red : C.line, paddingHorizontal: S.lg, fontFamily: FONT.medium, fontSize: 17, color: C.text }, shadowSm]}
-          />
-          <Button label="Set" onPress={submitZip} loading={busy} style={{ minWidth: 88 }} />
-        </View>
-        {!!error && <Text size={13} color={C.red} style={{ marginTop: S.sm }}>{error}</Text>}
       </Sheet>
       <AddressForm address={form} onClose={() => setForm(null)} onSaved={() => void saved()} />
     </>
