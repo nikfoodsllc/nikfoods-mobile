@@ -257,6 +257,35 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
   const stickyKeyRef = useRef<string | null>(null);
   stickyKeyRef.current = stickyKey;
 
+  // ---- sub-category tabs: always on top of a category that has sub-categories; the one you are reading is marked, tapping one scrolls there ----
+  const subRows = useMemo(() => rows.flatMap((r, index) => (r.type === 'sub' ? [{ key: r.key, name: r.name, index }] : [])), [rows]);
+  const showSubTabs = !searching && Boolean(categoryId) && subRows.length >= 2;
+  const [activeSub, setActiveSub] = useState<string | null>(null);
+  const subTabsRef = useRef<ScrollView>(null);
+  const subTabX = useRef(new Map<string, { x: number; w: number }>());
+  const barHeight = useRef(54); // the pinned day chips, when they are showing, cover the top of the list by this much
+  const pendingOffset = useRef(0);
+  const subRowsRef = useRef(subRows);
+  subRowsRef.current = subRows;
+  const showSubTabsRef = useRef(showSubTabs);
+  showSubTabsRef.current = showSubTabs;
+
+  const goToSub = (key: string) => {
+    const target = subRowsRef.current.find((x) => x.key === key);
+    if (!target) return;
+    tap();
+    setActiveSub(key);
+    // under the pinned day chips the heading would be hidden: leave room for them when they govern this part of the list
+    const covered = datesForRef.current[target.index] ? barHeight.current : 0;
+    pendingOffset.current = covered;
+    listRef.current?.scrollToIndex({ index: target.index, viewOffset: covered, animated: true });
+  };
+  // keep the marked tab in view
+  useEffect(() => {
+    const at = activeSub ? subTabX.current.get(activeSub) : null;
+    if (at) subTabsRef.current?.scrollTo({ x: Math.max(0, at.x - 40), animated: true });
+  }, [activeSub]);
+
   // the day chips are pinned once their own row has scrolled out of sight and dishes of that section are on screen
   // When the day-chip row is the top visible row it may be mostly hidden under the pinned bar (it still counts as "visible"):
   // measure where it really is, and pin the chips exactly while the real row is covered, so they are never missing.
@@ -291,6 +320,12 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
       return setStickyKey(null);
     }
     const top = Math.min(...idx);
+    if (showSubTabsRef.current) {
+      // the sub-category being read: the last heading at or above the top row (the first one while still above them all)
+      const list = subRowsRef.current;
+      const here = [...list].reverse().find((x) => x.index <= top) ?? list[0];
+      if (here) setActiveSub((p) => (p === here.key ? p : here.key));
+    }
     const governing = datesForRef.current[top];
     if (governing && top > governing.at) {
       gov.current = { key: governing.row.key, at: governing.at, top };
@@ -320,7 +355,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
     if (!pinned) return;
     const index = rowsRef.current.findIndex((r) => r.type === 'dates' && r.catId === catId);
     if (index < 0) return;
-    requestAnimationFrame(() => listRef.current?.scrollToIndex({ index, animated: false }));
+    requestAnimationFrame(() => { pendingOffset.current = barHeight.current; listRef.current?.scrollToIndex({ index, viewOffset: barHeight.current, animated: false }); });
   };
 
   const viewConfig = useRef({ itemVisiblePercentThreshold: 10 });
@@ -341,7 +376,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
   // appears and push every dish down (the jump you saw at the start of a scroll). It is laid out exactly like the real chip row,
   // so when the real row slides under it nothing seems to change.
   const pinnedBar = stickyRow ? (
-    <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: C.bg }}>
+    <View pointerEvents="box-none" onLayout={(e) => { barHeight.current = e.nativeEvent.layout.height; }} style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: C.bg }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: S.xl, gap: S.sm, paddingBottom: S.md }} keyboardShouldPersistTaps="handled">
         {stickyRow.dates.map((d) => {
           const on = d.date === stickyRow.selected;
@@ -449,7 +484,32 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
   const sheetDay = sheet?.dayGroup ? dayOf(sheet.dayGroup.date) : undefined;
   const sheetClosed = sheet?.dayGroup && sheetDay && (sheetDay.dayWisePastCutoff || sheetDay.dayWiseCategoryEnabled === false) ? 'Ordering closed' : undefined;
 
+  const subTabs = showSubTabs ? (
+    <View style={{ backgroundColor: C.bg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line }}>
+      <ScrollView ref={subTabsRef} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: S.xl, gap: 26 }}>
+        {subRows.map((x) => {
+          const on = x.key === (activeSub ?? subRows[0]?.key);
+          return (
+            <Pressable
+              key={x.key}
+              onPress={() => goToSub(x.key)}
+              onLayout={(e) => subTabX.current.set(x.key, { x: e.nativeEvent.layout.x, w: e.nativeEvent.layout.width })}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={x.name}
+              style={{ paddingTop: 10, paddingBottom: 9, borderBottomWidth: 3, borderBottomColor: on ? C.gold : 'transparent' }}
+            >
+              <Text weight={on ? 'bold' : 'medium'} size={15} color={on ? C.ink : C.muted} numberOfLines={1}>{x.name}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  ) : null;
+
   return (
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    {subTabs}
     <View ref={boxRef} collapsable={false} style={{ flex: 1, backgroundColor: C.bg }}>
       <FlatList
         ref={listRef}
@@ -471,13 +531,14 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
         onScrollToIndexFailed={(info) => {
           // the row is not measured yet (it is far above): jump near it, then place it
           listRef.current?.scrollToOffset({ offset: Math.max(0, info.averageItemLength * info.index), animated: false });
-          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: false }), 80);
+          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, viewOffset: pendingOffset.current, animated: false }), 80);
         }}
       />
       {pinnedBar}
       <CartBar />
       <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} />
       <DaySheet item={daySheet?.item ?? null} customizations={daySheet?.customizations} onClose={() => setDaySheet(null)} onConfirm={onDaysConfirm} />
+    </View>
     </View>
   );
 }
