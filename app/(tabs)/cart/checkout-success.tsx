@@ -18,6 +18,7 @@ function NotifyAsk() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     (async () => {
+      if (wasAskedBefore() || (await pushState()) !== 'undetermined') return;
       setShow(true);
     })();
   }, []);
