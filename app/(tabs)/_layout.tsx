@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, FONT, TAB_BAR_GAP, TAB_BAR_HEIGHT } from '@/constants/theme';
+import ChatFab from '@/components/ChatFab';
 import { useCart } from '@/contexts/CartContext';
 
 /** Four tabs in a floating glass pill: Home, Menu, Cart, Profile. */
@@ -22,6 +23,7 @@ export default function TabLayout() {
     />
   );
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -59,5 +61,7 @@ export default function TabLayout() {
       {tab('cart', 'Cart', 'bag-outline', 'bag', itemCount)}
       {tab('account', 'Profile', 'person-outline', 'person')}
     </Tabs>
+    <ChatFab />
+    </>
   );
 }

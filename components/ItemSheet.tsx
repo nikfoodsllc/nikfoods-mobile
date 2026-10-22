@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { C, R, S } from '@/constants/theme';
-import { Button, Sheet, Text, VegDot, tap } from '@/components/ui';
+import { Button, Text, VegDot, tap } from '@/components/ui';
 import { useToast } from '@/components/Toast';
 import { FoodItem, ComboSection } from '@/types/food';
 import { SpiceLevel } from '@/types/cart';
@@ -63,13 +64,16 @@ export default function ItemSheet({
   onClose,
   onAdd,
   closedLabel,
+  withQuantity = false,
 }: {
   item: FoodItem | null;
   onClose: () => void;
   /** Called with what the customer picked. Return nothing. */
-  onAdd: (item: FoodItem, customizations: CartCustomizations) => void;
+  onAdd: (item: FoodItem, customizations: CartCustomizations, quantity: number) => void;
   /** set when ordering for the chosen day is closed */
   closedLabel?: string;
+  /** show the quantity stepper (the dish goes straight to its delivery day); without it the days and quantities are chosen next */
+  withQuantity?: boolean;
 }) {
   const toast = useToast();
   const [portion, setPortion] = useState(0);
@@ -80,6 +84,8 @@ export default function ItemSheet({
   const scrollRef = useRef<ScrollView>(null);
   // once the name has scrolled out of sight it moves into the sheet's top bar, so you always see which dish you are choosing for
   const [pinned, setPinned] = useState(false);
+  const [qty, setQty] = useState(1);
+  const insets = useSafeAreaInsets();
   const sectionY = useRef<Record<string, number>>({});
   const [showMissing, setShowMissing] = useState(false);
 
@@ -87,6 +93,7 @@ export default function ItemSheet({
     if (!item) return;
     setShowMissing(false);
     setPinned(false);
+    setQty(1);
     sectionY.current = {};
     setPortion(0);
     setSpice('');
@@ -100,7 +107,7 @@ export default function ItemSheet({
     return base + (eco && item.ecoContainerCharge ? item.ecoContainerCharge : 0);
   }, [item, portion, eco]);
 
-  if (!item) return <Sheet visible={false} onClose={onClose}>{null}</Sheet>;
+  if (!item) return null;
 
   const spiceLevels = item.spiceLevel?.length ? item.spiceLevel : ['mild', 'normal', 'medium', 'Semi-Spicy', 'Super-Spicy'];
   const needSpice = Boolean(item.hasSpiceLevel && !spice.trim());
@@ -154,36 +161,42 @@ export default function ItemSheet({
       isEcoFriendlyContainer: eco,
       ecoContainerCharge: eco ? item.ecoContainerCharge : undefined,
       comboSelections: combo,
-    });
+    }, withQuantity ? qty : 1);
   };
 
+  const total = price * (withQuantity ? qty : 1);
   return (
-    <Sheet
-      visible
-      onClose={onClose}
-      title={pinned ? item.name : ''}
-      scrollRef={scrollRef}
-      onScrollY={(y) => setPinned((was) => (was ? y > 150 : y > 190))}
-      footer={
-        closedLabel ? (
-          <Button label={closedLabel} disabled onPress={() => {}} />
-        ) : missing ? (
-          <Button label={missing.label} onPress={goToMissing} />
-        ) : (
-          <Button label={`Add  ·  $${price.toFixed(2)}`} onPress={submit} />
-        )
-      }
-    >
-      <View style={{ alignItems: 'center', marginTop: -S.sm }}>
-        <View style={{ width: 150, height: 150, borderRadius: 75, overflow: 'hidden', backgroundColor: C.surface }}>
+    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+    // (the insets come from the app's root: a Modal is a separate window and cannot measure them itself)
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      {/* the page's top bar: close, and the dish's name once it has scrolled out of sight (so you always know what you are choosing for) */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, paddingHorizontal: S.lg, paddingVertical: S.sm, minHeight: 56 }}>
+        <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line }}>
+          <Ionicons name="close" size={22} color={C.ink} />
+        </Pressable>
+        <Text weight="bold" size={17} numberOfLines={1} style={{ flex: 1, opacity: pinned ? 1 : 0 }}>{item.name}</Text>
+      </View>
+      <ScrollView
+        ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          setPinned((was) => (was ? y > 250 : y > 290));
+        }}
+        contentContainerStyle={{ paddingHorizontal: S.xl, paddingBottom: 130 + insets.bottom }}
+      >
+      <View style={{ alignItems: 'center' }}>
+        <View style={{ width: '100%', aspectRatio: 1.25, borderRadius: 36, overflow: 'hidden', backgroundColor: C.surface }}>
           <Image source={item.url ? { uri: item.url } : undefined} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
         </View>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: S.sm, marginTop: S.lg }}>
-        <View style={{ paddingTop: 5 }}><VegDot veg={item.veg} size={18} /></View>
-        <Text weight="bold" size={22} style={{ flex: 1 }}>{item.name}</Text>
+        <View style={{ paddingTop: 11 }}><VegDot veg={item.veg} size={18} /></View>
+        <Text weight="display" size={36} style={{ flex: 1, lineHeight: 38 }}>{item.name}</Text>
       </View>
-      <Text weight="bold" size={18} color={C.brandDark} style={{ marginTop: 4 }}>
+      <Text weight="bold" size={19} color={C.brandDark} style={{ marginTop: 6 }}>
         {item.portions?.length ? 'From ' : ''}${Number(item.portions?.length && item.portionPrices?.length ? item.portionPrices[0] : item.price).toFixed(2)}
       </Text>
       {!!item.description && <Text size={15} color={C.body} style={{ marginTop: S.md, lineHeight: 22 }}>{item.description}</Text>}
@@ -260,6 +273,31 @@ export default function ItemSheet({
           })}
         </View>
       )}
-    </Sheet>
+      </ScrollView>
+      {/* the bottom bar: quantity (day-wise dishes) and the add button, always in reach */}
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.lg, paddingTop: S.md, paddingBottom: Math.max(insets.bottom, S.lg), backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line, flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+        {withQuantity && !closedLabel && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', height: 56, borderRadius: 28, borderWidth: 1.5, borderColor: C.line, backgroundColor: C.white }}>
+            <Pressable onPress={() => { tap(); setQty((q) => Math.max(1, q - 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="Less" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="remove" size={22} color={qty <= 1 ? C.faint : C.ink} />
+            </Pressable>
+            <Text weight="bold" size={18} style={{ minWidth: 26, textAlign: 'center' }}>{qty}</Text>
+            <Pressable onPress={() => { tap(); setQty((q) => Math.min(20, q + 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="More" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="add" size={22} color={C.ink} />
+            </Pressable>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          {closedLabel ? (
+            <Button label={closedLabel} disabled onPress={() => {}} />
+          ) : missing ? (
+            <Button label={missing.label} onPress={goToMissing} />
+          ) : (
+            <Button label={`Add  ·  $${total.toFixed(2)}`} onPress={submit} />
+          )}
+        </View>
+      </View>
+    </View>
+    </Modal>
   );
 }

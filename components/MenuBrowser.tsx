@@ -70,7 +70,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
     await refreshCart();
   };
 
-  const addToDay = (item: FoodItem, dayGroup: DayGroup, customizations: CartCustomizations = {}) => {
+  const addToDay = (item: FoodItem, dayGroup: DayGroup, customizations: CartCustomizations = {}, quantity = 1) => {
     const opt = dayOf(dayGroup.date);
     if (!opt?.day || !opt.dayWiseCategoryEnabled) {
       toast(`${dayGroup.displayName} is not open for orders`, 'error');
@@ -78,7 +78,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
     }
     const { __dayGroup, ...clean } = item as FoodItem & { __dayGroup?: unknown };
     void __dayGroup;
-    localCart.addItem(opt.day as DayType, dayGroup.date, clean as FoodItem, 1, customizations);
+    localCart.addItem(opt.day as DayType, dayGroup.date, clean as FoodItem, quantity, customizations);
     void after();
     return true;
   };
@@ -136,11 +136,11 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
     setDaySheet({ item });
   };
 
-  const onSheetAdd = (item: FoodItem, customizations: CartCustomizations) => {
+  const onSheetAdd = (item: FoodItem, customizations: CartCustomizations, quantity: number) => {
     const target = sheet?.dayGroup;
     setSheet(null);
     if (target) {
-      if (addToDay(item, target, customizations)) toast('Added');
+      if (addToDay(item, target, customizations, quantity)) toast('Added');
     } else {
       setDaySheet({ item, customizations });
     }
@@ -265,6 +265,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
   const subTabX = useRef(new Map<string, { x: number; w: number }>());
   const barHeight = useRef(54); // the pinned day chips, when they are showing, cover the top of the list by this much
   const pendingOffset = useRef(0);
+  const subLockUntil = useRef(0); // after tapping a tab the marked one stays put while the list scrolls there
   const subRowsRef = useRef(subRows);
   subRowsRef.current = subRows;
   const showSubTabsRef = useRef(showSubTabs);
@@ -275,6 +276,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
     if (!target) return;
     tap();
     setActiveSub(key);
+    subLockUntil.current = Date.now() + 900;
     // under the pinned day chips the heading would be hidden: leave room for them when they govern this part of the list
     const covered = datesForRef.current[target.index] ? barHeight.current : 0;
     pendingOffset.current = covered;
@@ -323,8 +325,9 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
     if (showSubTabsRef.current) {
       // the sub-category being read: the last heading at or above the top row (the first one while still above them all)
       const list = subRowsRef.current;
-      const here = [...list].reverse().find((x) => x.index <= top) ?? list[0];
-      if (here) setActiveSub((p) => (p === here.key ? p : here.key));
+      // (one row of look-ahead: the row at the very top can be half hidden under the pinned day chips)
+      const here = [...list].reverse().find((x) => x.index <= top + 1) ?? list[0];
+      if (here && Date.now() > subLockUntil.current) setActiveSub((p) => (p === here.key ? p : here.key));
     }
     const governing = datesForRef.current[top];
     if (governing && top > governing.at) {
@@ -536,7 +539,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
       />
       {pinnedBar}
       <CartBar />
-      <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} />
+      <ItemSheet item={sheet?.item ?? null} onClose={() => setSheet(null)} onAdd={onSheetAdd} closedLabel={sheetClosed} withQuantity={Boolean(sheet?.dayGroup)} />
       <DaySheet item={daySheet?.item ?? null} customizations={daySheet?.customizations} onClose={() => setDaySheet(null)} onConfirm={onDaysConfirm} />
     </View>
     </View>
