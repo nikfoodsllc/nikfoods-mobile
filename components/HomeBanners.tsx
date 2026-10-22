@@ -18,9 +18,11 @@ interface Banner {
   linkType: 'none' | 'category' | 'url';
   categoryId: string;
   url: string;
+  /** seconds this banner stays on show (the admin chooses; 5 when missing) */
+  durationSeconds?: number;
 }
 
-const AUTO_MS = 5500;
+const DEFAULT_SECONDS = 5;
 const DEFAULT_RATIO = 2; // until a picture has loaded
 let cached: Banner[] | null = null;
 
@@ -63,13 +65,15 @@ export default function HomeBanners({ scrollY }: { scrollY?: SharedValue<number>
 
   useEffect(() => {
     if (count < 2 || touching || reduceMotion) return;
-    const t = setInterval(() => {
+    // each banner stays for the time the admin chose for it, then the next one slides in
+    const stay = Math.min(60, Math.max(2, Number(banners[index]?.durationSeconds) || DEFAULT_SECONDS)) * 1000;
+    const t = setTimeout(() => {
       const next = (index + 1) % count;
       list.current?.scrollToOffset({ offset: next * w, animated: true });
       setIndex(next);
-    }, AUTO_MS);
-    return () => clearInterval(t);
-  }, [count, touching, reduceMotion, index, w]);
+    }, stay);
+    return () => clearTimeout(t);
+  }, [count, touching, reduceMotion, index, w, banners]);
 
   const open = useCallback(
     (b: Banner) => {
