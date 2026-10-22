@@ -21,5 +21,8 @@ export function routeForIncomingLink(input: string): string {
   if (pathname === '/account/orders') {
     return order && /^[A-Za-z0-9#-]{4,60}$/.test(order) ? `/account/orders/${encodeURIComponent(order)}` : '/account/orders';
   }
-  return path.startsWith('/') && !path.startsWith('//') && !/^\/[a-z]+:/i.test(path) ? path : '/';
+  // only the app's own screens are opened; any other link (a payment link, a page of the website) goes to Home instead of a
+  // "not found" screen. Payment links are not claimed by the app, so they open in Safari.
+  const ours = /^\/(menu|cart|account)(\/|$)/.test(pathname);
+  return ours && path.startsWith('/') && !path.startsWith('//') ? path : '/';
 }

@@ -47,7 +47,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     self.window = window
 
     var launchOptions: [UIApplication.LaunchOptionsKey: Any] = [:]
-    if let url = connectionOptions.urlContexts.first?.url { launchOptions[.url] = url }
+    if let url = connectionOptions.urlContexts.first?.url {
+      launchOptions[.url] = url
+    } else if let activity = connectionOptions.userActivities.first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb }) {
+      // A universal link (the "View my order" button in an email) that STARTS the app arrives here, not as a URL: hand it to
+      // React Native as the launch link, or the app opens on the menu and only a second tap of the link works.
+      launchOptions[.userActivityDictionary] = [
+        "UIApplicationLaunchOptionsUserActivityTypeKey": NSUserActivityTypeBrowsingWeb,
+        "UIApplicationLaunchOptionsUserActivityKey": activity,
+      ] as [String: Any]
+    }
     factory.startReactNative(withModuleName: "main", in: window, launchOptions: launchOptions)
   }
 
