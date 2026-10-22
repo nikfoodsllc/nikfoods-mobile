@@ -9,7 +9,38 @@ import { Button, Card, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { useApiClient } from '@/hooks/useApiClient';
+import { askForPush, markAsked, pushState, registerPush, wasAskedBefore } from '@/lib/push';
 import { Order } from '@/types/order';
+
+// The notification question is asked here, after the customer's first order (when updates about it matter), not when the app opens.
+function NotifyAsk() {
+  const { authenticatedFetch } = useApiClient();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    (async () => {
+      setShow(true);
+    })();
+  }, []);
+  if (!show) return null;
+  const answer = async (yes: boolean) => {
+    setShow(false);
+    markAsked();
+    if (!yes) return;
+    const state = await askForPush();
+    // also when the answer was No: the site is told either way
+    if (state !== 'unavailable') void registerPush(authenticatedFetch);
+  };
+  return (
+    <Card style={{ alignSelf: 'stretch', marginTop: S.lg }}>
+      <Text weight="bold" size={17}>Get order and menu updates?</Text>
+      <Text size={14} color={C.muted} style={{ marginTop: 4 }}>We will tell you when your order is on its way and delivered, and when the new menu is out.</Text>
+      <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
+        <View style={{ flex: 1 }}><Button small variant="outline" label="Not now" onPress={() => void answer(false)} /></View>
+        <View style={{ flex: 1 }}><Button small label="Turn on" onPress={() => void answer(true)} /></View>
+      </View>
+    </Card>
+  );
+}
 
 export default function CheckoutSuccess() {
   const bottomSpace = useTabBarSpace(false);
@@ -63,6 +94,8 @@ export default function CheckoutSuccess() {
             </View>
           </Card>
         )}
+
+        <NotifyAsk />
 
         <View style={{ alignSelf: 'stretch', gap: S.sm, marginTop: S.xl }}>
           <Button label="View order" onPress={() => router.replace({ pathname: '/account/orders/[id]', params: { id: String(orderId) } })} />

@@ -40,6 +40,7 @@ export function routeForIncomingLink(input: string): string {
   if (path.startsWith('//') || /[\s\\]/.test(pathname)) return '/';
   // the website's checkout is the app's checkout (it shows the cart instead when nothing is in it)
   if (pathname === '/checkout') return '/cart/checkout';
+  if (pathname === '/cart/checkout-success') return `${pathname}${new URL(path, 'https://www.nikfoods.com').search}`;
   // the app's own screens (the same paths as the website's cart and account pages); the cart keeps its ?restore= link details
   const search = new URL(path, 'https://www.nikfoods.com').search;
   if (pathname === '/cart') return `/cart${search}`;

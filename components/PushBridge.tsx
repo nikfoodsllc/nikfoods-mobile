@@ -34,19 +34,6 @@ export default function PushBridge() {
   const openRef = useRef(open);
   openRef.current = open;
 
-  // the first time the app is opened (guest or signed in): iOS's own "Allow notifications?" question, once.
-  // Not asked again; after that the customer uses Account > Notifications or iPhone Settings.
-  useEffect(() => {
-    (async () => {
-      if (wasAskedBefore() || (await pushState()) !== 'undetermined') return;
-      markAsked();
-      const state = await askForPush();
-      // also when the answer was No: the site is told either way
-      if (state !== 'unavailable' && userRef.current) void registerPush(authenticatedFetch);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // coming back to the app (also after the question or iPhone Settings): register this phone if it is allowed now
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
