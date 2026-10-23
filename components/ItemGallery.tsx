@@ -5,6 +5,10 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '@/constants/theme';
 import { Text, tap } from '@/components/ui';
+import { useAutoAdvance } from '@/lib/useAutoAdvance';
+
+/** the photos move on by themselves this often (waits while touched or zoomed, off for Reduce Motion) */
+const AUTO_ADVANCE_MS = 4000;
 
 /**
  * The photo(s) of a dish at the top of its sheet. With more than one photo they page sideways with dots; the + button
@@ -17,12 +21,20 @@ export default function ItemGallery({ name, images, radius = 36, aspectRatio = 1
   const [index, setIndex] = useState(0);
   const [zoomAt, setZoomAt] = useState<number | null>(null);
   const many = list.length > 1;
+  const strip = useRef<FlatList<string>>(null);
+  const [holding, setHolding] = useState(false);
+  useAutoAdvance(many && !holding && zoomAt === null && width > 0, AUTO_ADVANCE_MS, index, () => {
+    const next = (index + 1) % list.length;
+    setIndex(next);
+    strip.current?.scrollToOffset({ offset: next * width, animated: true });
+  });
   if (list.length === 0) return <View style={{ width: '100%', aspectRatio, borderRadius: radius, backgroundColor: C.surface }} />;
 
   return (
     <View style={{ width: '100%', aspectRatio, borderRadius: radius, overflow: 'hidden', backgroundColor: C.surface }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {width > 0 && (
         <FlatList
+          ref={strip}
           data={list}
           keyExtractor={(u, i) => `${i}-${u}`}
           horizontal
@@ -30,7 +42,12 @@ export default function ItemGallery({ name, images, radius = 36, aspectRatio = 1
           scrollEnabled={many}
           showsHorizontalScrollIndicator={false}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-          onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+          onScrollBeginDrag={() => setHolding(true)}
+          onScrollEndDrag={() => setHolding(false)}
+          onMomentumScrollEnd={(e) => {
+            setHolding(false);
+            setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+          }}
           renderItem={({ item }) => (
             <Image source={{ uri: item }} style={{ width, height: '100%' }} contentFit="cover" transition={150} accessibilityLabel={name} />
           )}
