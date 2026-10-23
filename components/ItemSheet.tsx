@@ -10,6 +10,7 @@ import { FoodItem, ComboSection } from '@/types/food';
 import { SpiceLevel } from '@/types/cart';
 import { CartCustomizations } from '@/types/localCart';
 import { formatSpiceLevel, normalizeSpiceLevelKey } from '@/utils/formatters';
+import { comboNeedsOverallSpice, getSectionSpice, pruneSectionSpice, sectionOwnsSpice, sectionsMissingSpice, withSectionSpice } from '@/lib/comboSpice';
 import { comboItemQuantity } from '@/lib/comboQuantity';
 
 const SPICE_DOTS: Record<string, number> = {
@@ -110,9 +111,12 @@ export default function ItemSheet({
   if (!item) return null;
 
   const spiceLevels = item.spiceLevel?.length ? item.spiceLevel : ['mild', 'normal', 'medium', 'Semi-Spicy', 'Super-Spicy'];
-  const needSpice = Boolean(item.hasSpiceLevel && !spice.trim());
+  const overallSpice = comboNeedsOverallSpice(item);
+  const needSpice = Boolean(overallSpice && !spice.trim());
+  // sections whose spice level the customer picks on its own
+  const missingSpiceSection = sectionsMissingSpice(item, combo)[0];
   const missingSection = item.hasCombo ? item.sections?.find((s) => s.minSelection && (combo[s._id] ?? []).length < s.minSelection) : undefined;
-  const missing = needSpice ? { key: 'spice', label: 'Choose a spice level' } : missingSection ? { key: missingSection._id, label: `Choose ${missingSection.title}` } : null;
+  const missing = needSpice ? { key: 'spice', label: 'Choose a spice level' } : missingSection ? { key: missingSection._id, label: `Choose ${missingSection.title}` } : missingSpiceSection ? { key: missingSpiceSection._id, label: `Choose spice for ${missingSpiceSection.title}` } : null;
   const goToMissing = () => {
     if (!missing) return;
     setShowMissing(true);
@@ -136,8 +140,12 @@ export default function ItemSheet({
   };
 
   const submit = () => {
-    if (item.hasSpiceLevel && !spice.trim()) {
+    if (overallSpice && !spice.trim()) {
       toast('Choose a spice level', 'error');
+      return;
+    }
+    if (missingSpiceSection) {
+      toast(`Choose spice for ${missingSpiceSection.title}`, 'error');
       return;
     }
     if (item.hasCombo && item.sections) {
@@ -160,7 +168,7 @@ export default function ItemSheet({
       selectedSpiceLevel: spice as SpiceLevel,
       isEcoFriendlyContainer: eco,
       ecoContainerCharge: eco ? item.ecoContainerCharge : undefined,
-      comboSelections: combo,
+      comboSelections: pruneSectionSpice(item.sections, combo),
     }, withQuantity ? qty : 1);
   };
 
@@ -212,7 +220,7 @@ export default function ItemSheet({
         </View>
       )}
 
-      {item.hasSpiceLevel && (
+      {overallSpice && (
         <View style={{ marginTop: S.xl }} onLayout={(e) => { sectionY.current.spice = e.nativeEvent.layout.y; }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <Text weight="bold" size={16} style={{ marginBottom: S.sm }}>Spice level</Text>
@@ -268,6 +276,26 @@ export default function ItemSheet({
                     </Text>
                   </Row>
                 ))}
+                {item.hasSpiceLevel && sectionOwnsSpice(section) && chosen.length > 0 && (
+                  <View style={{ marginTop: S.sm }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: S.xs }}>
+                      <Text weight="semibold" size={14}>Spice level</Text>
+                      <Text size={13} weight={showMissing && missingSpiceSection?._id === section._id ? 'bold' : 'regular'} color={C.red}>{showMissing && missingSpiceSection?._id === section._id ? 'Pick one' : 'Required'}</Text>
+                    </View>
+                    {spiceLevels.map((level) => {
+                      const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
+                      return (
+                        <Row key={level} selected={getSectionSpice(combo, section._id) === level} multi={false} onPress={() => setCombo((prev) => withSectionSpice(prev, section._id, level))} right={
+                          <View style={{ flexDirection: 'row', gap: 3 }}>
+                            {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT_COLORS[i] }} />)}
+                          </View>
+                        }>
+                          <Text weight="medium" size={15}>{formatSpiceLevel(level)}</Text>
+                        </Row>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             );
           })}
