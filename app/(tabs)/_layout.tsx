@@ -28,7 +28,8 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: C.ink,
-        tabBarInactiveTintColor: C.faint,
+        // the inactive icons and names must stay readable over anything behind the bar (C.faint was too pale on a translucent bar)
+        tabBarInactiveTintColor: '#6B6259',
         tabBarLabelStyle: { fontFamily: FONT.semibold, fontSize: 11, letterSpacing: 0.2 },
         tabBarAllowFontScaling: false,
         tabBarItemStyle: { paddingTop: 6 },
@@ -44,14 +45,15 @@ export default function TabLayout() {
           backgroundColor: 'transparent',
           elevation: 0,
           shadowColor: '#3B2A14',
-          shadowOpacity: 0.16,
+          shadowOpacity: 0.22,
           shadowRadius: 26,
           shadowOffset: { width: 0, height: 12 },
         },
         tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { borderRadius: TAB_BAR_HEIGHT / 2, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(60,40,15,0.12)' }]}>
-            <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(250,247,242,0.72)' }]} />
+          <View style={[StyleSheet.absoluteFill, { borderRadius: TAB_BAR_HEIGHT / 2, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(60,40,15,0.2)' }]}>
+            <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill} />
+            {/* almost solid, so the cart bar or a photo behind it never washes the tabs out */}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(252,250,246,0.96)' }]} />
           </View>
         ),
       }}
