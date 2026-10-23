@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { C, R, S } from '@/constants/theme';
 import { Button, Text, VegDot, tap } from '@/components/ui';
@@ -12,6 +11,7 @@ import { CartCustomizations } from '@/types/localCart';
 import { formatSpiceLevel, normalizeSpiceLevelKey } from '@/utils/formatters';
 import { comboNeedsOverallSpice, getSectionSpice, pruneSectionSpice, sectionOwnsSpice, sectionsMissingSpice, withSectionSpice } from '@/lib/comboSpice';
 import { comboItemQuantity } from '@/lib/comboQuantity';
+import ItemGallery from '@/components/ItemGallery';
 
 const SPICE_DOTS: Record<string, number> = {
   mild: 1, 'mild (kid friendly)': 1, normal: 2, medium: 3, 'medium spice': 3, 'semi-spicy': 4, 'semi spicy': 4, spicy: 4, 'super-spicy': 5, 'super spicy': 5, 'extra spicy': 5, hot: 5,
@@ -196,9 +196,8 @@ export default function ItemSheet({
         contentContainerStyle={{ paddingHorizontal: S.xl, paddingBottom: 130 + insets.bottom }}
       >
       <View style={{ alignItems: 'center' }}>
-        <View style={{ width: '100%', aspectRatio: 1.25, borderRadius: 36, overflow: 'hidden', backgroundColor: C.surface }}>
-          <Image source={item.url ? { uri: item.url } : undefined} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
-        </View>
+        {/* the dish's photos: page through them, + opens one full screen to zoom */}
+        <ItemGallery name={item.name} images={item.images && item.images.length > 1 ? item.images : item.url ? [item.url] : []} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: S.sm, marginTop: S.lg }}>
         <View style={{ paddingTop: 11 }}><VegDot veg={item.veg} size={18} /></View>
