@@ -17,6 +17,7 @@ import { C, S, shadow } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { greeting, useHomeIntro } from '@/lib/homeIntro';
+import { pickNextDelivery, todayPacific } from '@/lib/nextDelivery';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { Order } from '@/types/order';
@@ -32,6 +33,8 @@ export default function Home() {
   const { authenticatedFetch } = useApiClient();
   const { reload } = useHomeMenu();
   const [next, setNext] = useState<Order | null>(null);
+  // the day the card shows: the soonest delivery that is today or later
+  const [nextDay, setNextDay] = useState<Order['items'][number] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const intro = useHomeIntro();
   const scrollY = useSharedValue(0);
@@ -42,6 +45,7 @@ export default function Home() {
   const loadNext = useCallback(async () => {
     if (!user) {
       setNext(null);
+      setNextDay(null);
       return;
     }
     try {
@@ -50,8 +54,10 @@ export default function Home() {
       if (!r.ok || !j.success) return;
       const orders = (j.data.items as Order[]).filter((o) => o.status === 'confirmed' && o.paymentStatus !== 'failed');
       // the order that is delivered first
-      const first = (o: Order) => o.items.map((d) => String(d.actualDeliveryDate || d.deliveryDate).slice(0, 10)).sort()[0] ?? '9999';
-      setNext(orders.sort((a, b) => first(a).localeCompare(first(b)))[0] ?? null);
+      // only deliveries from today on: a day that has passed is not "next"
+      const pick = pickNextDelivery(orders, todayPacific());
+      setNext(pick?.order ?? null);
+      setNextDay(pick?.day ?? null);
     } catch {
       // the card just stays hidden
     }
@@ -63,7 +69,6 @@ export default function Home() {
 
   const first = (user?.name ?? '').trim().split(/\s+/)[0];
   const hello = greeting(intro, first);
-  const nextDay = next ? next.items.slice().sort((a, b) => String(a.actualDeliveryDate || a.deliveryDate).localeCompare(String(b.actualDeliveryDate || b.deliveryDate)))[0] : null;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
