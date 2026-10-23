@@ -60,7 +60,7 @@ export default function ItemGallery({ name, images, radius = 36, aspectRatio = 1
           ))}
         </View>
       )}
-      {/* the zoom button: a plus, bottom right */}
+      {/* the zoom button: an expand icon (a plus would look like add to cart), bottom right */}
       <Pressable
         onPress={() => { tap(); setZoomAt(index); }}
         hitSlop={8}
@@ -68,7 +68,7 @@ export default function ItemGallery({ name, images, radius = 36, aspectRatio = 1
         accessibilityLabel="Zoom photo"
         style={{ position: 'absolute', right: 14, bottom: 14, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line }}
       >
-        <Ionicons name="add" size={26} color={C.ink} />
+        <Ionicons name="expand-outline" size={22} color={C.ink} />
       </Pressable>
       <Zoomer images={list} startIndex={zoomAt} onClose={() => setZoomAt(null)} />
     </View>
