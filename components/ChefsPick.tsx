@@ -11,9 +11,13 @@ import { chefsPickCells } from '@/lib/chefsPick';
 import { buildMenuSections } from '@/lib/homeMenu';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useVegOnly } from '@/lib/vegOnly';
+import { useAutoAdvance } from '@/lib/useAutoAdvance';
+import { useIsFocused } from '@react-navigation/native';
 
 const CARD_W = 172;
 const GAP = 12;
+/** the row moves on by one dish this often (waits while it is touched, off for Reduce Motion) */
+const AUTO_ADVANCE_MS = 5000;
 
 /**
  * Home, under the banner: the dishes marked Chef's Pick in the admin (Food Items). Same dish cards and Add buttons as the Menu;
@@ -29,6 +33,8 @@ export default function ChefsPick() {
   const [x, setX] = useState(0);
   const [width, setWidth] = useState(0);
   const [content, setContent] = useState(0);
+  const [holding, setHolding] = useState(false);
+  const focused = useIsFocused();
 
   const cells = useMemo(() => {
     const sections = buildMenuSections(categories, map, '', vegOnly, availableDates).map((s) => ({ name: s.meta.name, category: s.category }));
@@ -38,6 +44,14 @@ export default function ChefsPick() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, map, availableDates, vegOnly]);
+
+  // every 5 seconds the row moves on by one dish; at the end it goes back to the first
+  const step = CARD_W + GAP;
+  const page = Math.round(x / step);
+  useAutoAdvance(cells.length > 1 && content > width && !holding && focused, AUTO_ADVANCE_MS, page, () => {
+    const atEnd = x + width >= content - 4;
+    scroller.current?.scrollTo({ x: atEnd ? 0 : Math.min(content - width, (page + 1) * step), animated: true });
+  });
 
   void cart;
   if (loading || cells.length === 0) return null;
@@ -66,6 +80,9 @@ export default function ChefsPick() {
         contentContainerStyle={{ paddingHorizontal: S.xl, gap: GAP, paddingBottom: S.sm }}
         scrollEventThrottle={16}
         onScroll={(e) => setX(e.nativeEvent.contentOffset.x)}
+        onScrollBeginDrag={() => setHolding(true)}
+        onScrollEndDrag={() => setHolding(false)}
+        onMomentumScrollEnd={() => setHolding(false)}
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
         onContentSizeChange={(w) => setContent(w)}
         decelerationRate="fast"
