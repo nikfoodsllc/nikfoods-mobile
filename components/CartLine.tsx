@@ -6,6 +6,7 @@ import { C, R, S } from '@/constants/theme';
 import { Stepper, Text, VegDot, tap } from '@/components/ui';
 import { CartItem } from '@/types/cart';
 import { formatSpiceLevel } from '@/utils/formatters';
+import { getSectionSpice } from '@/lib/comboSpice';
 
 /** What the customer picked on a combo, one line per section ("Veg Curry of the Day: Kale Chane"). */
 export function comboLines(item: CartItem): string[] {
@@ -15,7 +16,8 @@ export function comboLines(item: CartItem): string[] {
   for (const s of sections) {
     const ids = chosen[s._id] ?? [];
     const names = s.selectedItems.filter((si) => ids.includes(si._id)).map((si) => si.item.name);
-    if (names.length) lines.push(`${s.title}: ${names.join(', ')}`);
+    const own = getSectionSpice(chosen, s._id);
+    if (names.length) lines.push(`${s.title}: ${names.join(', ')}${own ? `  ·  ${formatSpiceLevel(own)}` : ''}`);
   }
   return lines;
 }
