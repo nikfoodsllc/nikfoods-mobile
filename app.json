@@ -2,7 +2,7 @@
   "expo": {
     "name": "NikFoods",
     "slug": "nikfoods-mobile",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "nikfoodsmobile",
@@ -10,21 +10,27 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#E07B39"
+      "backgroundColor": "#FFFFFF"
     },
-   "ios": {
-  "supportsTablet": false,
-  "bundleIdentifier": "com.nikfoods.mobile",
-  "buildNumber": "1",
-  "entitlements": {
-    "com.apple.developer.in-app-payments": ["merchant.com.nikfoods"]
-  },
-  "infoPlist": {
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nikfoods.mobile",
+      "buildNumber": "1",
+      "entitlements": {
+        "com.apple.developer.in-app-payments": [
+          "merchant.com.nikfoods"
+        ]
+      },
+      "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to find nearby delivery addresses.",
         "NSCameraUsageDescription": "We use your camera for profile photos.",
         "NSPhotoLibraryUsageDescription": "We use your photo library for profile photos.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:www.nikfoods.com",
+        "applinks:livesite-dev.vercel.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -47,7 +53,23 @@
           "enableGooglePay": false
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-web-browser",
+      "./plugins/withPodsMinIos",
+      "./plugins/withSceneLifecycle",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Unlock NikFoods with Face ID."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -56,6 +78,12 @@
       "eas": {
         "projectId": "a5abe212-9889-4412-97d1-9b587c95261d"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a5abe212-9889-4412-97d1-9b587c95261d"
     }
   }
 }

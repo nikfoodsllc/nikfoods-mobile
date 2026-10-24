@@ -1,172 +1,105 @@
+import { CormorantGaramond_600SemiBold, CormorantGaramond_700Bold } from '@expo-google-fonts/cormorant-garamond';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { StripeProvider } from '@stripe/stripe-react-native';
+import * as Linking from 'expo-linking';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Image, StyleSheet, View } from 'react-native';
-import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AppLock from '@/components/AppLock';
+import PushBridge from '@/components/PushBridge';
+import { ToastProvider } from '@/components/Toast';
+import { APP_SCHEME, APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
+import { C } from '@/constants/theme';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { CartProvider } from '@/contexts/CartContext';
+import { routeForIncomingLink } from '@/lib/deepLink';
+import { configureNotifications } from '@/lib/push';
+import { prefetchMenu } from '@/lib/useHomeMenu';
+import { initRuntime, onRedirect } from '@/lib/runtime';
 
-import { useColorScheme } from '@/components/useColorScheme';
-
-export {
-  ErrorBoundary
-} from 'expo-router';
-
-export const unstable_settings = {
-  initialRouteName: '(tabs)',
-};
+export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+configureNotifications();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
+  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, CormorantGaramond_600SemiBold, CormorantGaramond_700Bold, ...Ionicons.font, ...FontAwesome.font });
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
-}
-
-function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
-  const logoScale = useRef(new Animated.Value(0.3)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const subtitleOpacity = useRef(new Animated.Value(0)).current;
-  const splashOpacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    // Step 1: Logo scales up and fades in
-    Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Step 2: Tagline fades in
-      Animated.timing(taglineOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        // Step 3: Subtitle fades in
-        Animated.timing(subtitleOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }).start(() => {
-          // Step 4: Hold for 1000ms then fade out
-          setTimeout(() => {
-            Animated.timing(splashOpacity, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true,
-            }).start(() => {
-              onFinish();
-            });
-          }, 1000);
-        });
+    initRuntime()
+      .catch((e) => console.warn('runtime init failed', e))
+      .finally(() => {
+        setReady(true);
+        prefetchMenu(); // the menu is ready by the time someone opens it
       });
-    });
   }, []);
 
+  useEffect(() => {
+    if (fontsLoaded && ready) void SplashScreen.hideAsync();
+  }, [fontsLoaded, ready]);
+
+  if (!fontsLoaded || !ready) return null;
+
   return (
-    <Animated.View style={[styles.splashContainer, { opacity: splashOpacity }]}>
-      {/* Dark card behind logo for contrast */}
-      <View style={styles.logoCard}>
-        <Animated.View style={{
-          transform: [{ scale: logoScale }],
-          opacity: logoOpacity,
-          alignItems: 'center',
-        }}>
-          <Image
-            source={require('../assets/images/nikfoods-logo.png')}
-            style={styles.splashLogo}
-            resizeMode="contain"
-          />
-        </Animated.View>
-      </View>
-
-      <Animated.Text style={[styles.splashTagline, { opacity: taglineOpacity }]}>
-        Authentic Indian food
-      </Animated.Text>
-
-      <Animated.Text style={[styles.splashSubtitle, { opacity: subtitleOpacity }]}>
-        Eat Healthy, Live Happy
-      </Animated.Text>
-    </Animated.View>
+    <SafeAreaProvider>
+      <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'} merchantIdentifier={APPLE_MERCHANT_ID} urlScheme={APP_SCHEME}>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <AppLock>
+                <Nav />
+              </AppLock>
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </StripeProvider>
+    </SafeAreaProvider>
   );
 }
 
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  const [showSplash, setShowSplash] = useState(true);
+let launchLinkHandled = false;
 
-  if (showSplash) {
-    return <AnimatedSplash onFinish={() => setShowSplash(false)} />;
-  }
+function Nav() {
+  const router = useRouter();
+
+  // The link that LAUNCHED the app (a View my order link tapped while the app was closed): the root layout draws nothing until the
+  // fonts and storage are ready, and by then the router has dropped it, so the app opened on the menu. Look at it again here, once.
+  useEffect(() => {
+    if (launchLinkHandled) return;
+    launchLinkHandled = true;
+    void Linking.getInitialURL().then((url) => {
+      if (!url) return;
+      const target = routeForIncomingLink(url);
+      if (target && target !== '/') router.navigate(target as never);
+    });
+  }, [router]);
+
+  // the website code sends visitors to '/' when a session expired: show the sign-in screen
+  // (pushed over the screen that needed it, not replacing it: after signing in you are back on that screen, for example the order
+  // a "View my order" link opened)
+  const pathname = usePathname();
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
+  useEffect(() => onRedirect(() => { if (pathRef.current !== '/login') router.push('/login'); }), [router]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    <>
+      <PushBridge />
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'slide_from_right' }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="signup" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="forgot-password" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="chat" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="pay/[orderId]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="web" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
-    </ThemeProvider>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  splashContainer: {
-    flex: 1,
-    backgroundColor: '#E07B39',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoCard: {
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  splashLogo: {
-    width: 260,
-    height: 100,
-  },
-  splashTagline: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  splashSubtitle: {
-    fontSize: 15,
-    color: '#FFE5D0',
-    fontWeight: '400',
-    letterSpacing: 0.3,
-    fontStyle: 'italic',
-  },
-});
