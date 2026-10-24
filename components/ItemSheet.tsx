@@ -9,7 +9,7 @@ import { FoodItem, ComboSection } from '@/types/food';
 import { SpiceLevel } from '@/types/cart';
 import { CartCustomizations } from '@/types/localCart';
 import { formatSpiceLevel, normalizeSpiceLevelKey } from '@/utils/formatters';
-import { comboNeedsOverallSpice, getSectionSpice, pruneSectionSpice, sectionOwnsSpice, sectionsMissingSpice, withSectionSpice } from '@/lib/comboSpice';
+import { comboNeedsOverallSpice, getSectionSpice, optionsMissingSpice, pickedSpiceOptions, pruneComboSpice, sectionOwnsSpice, sectionsMissingSpice, withOptionSpice, withSectionSpice } from '@/lib/comboSpice';
 import { comboItemQuantity } from '@/lib/comboQuantity';
 import ItemGallery from '@/components/ItemGallery';
 
@@ -115,8 +115,11 @@ export default function ItemSheet({
   const needSpice = Boolean(overallSpice && !spice.trim());
   // sections whose spice level the customer picks on its own
   const missingSpiceSection = sectionsMissingSpice(item, combo)[0];
+  // combos that ask for spice per item: every picked item that has spice levels needs one
+  const itemSpice = pickedSpiceOptions(item, combo);
+  const missingItemSpice = optionsMissingSpice(item, combo)[0];
   const missingSection = item.hasCombo ? item.sections?.find((s) => s.minSelection && (combo[s._id] ?? []).length < s.minSelection) : undefined;
-  const missing = needSpice ? { key: 'spice', label: 'Choose a spice level' } : missingSection ? { key: missingSection._id, label: `Choose ${missingSection.title}` } : missingSpiceSection ? { key: missingSpiceSection._id, label: `Choose spice for ${missingSpiceSection.title}` } : null;
+  const missing = needSpice ? { key: 'spice', label: 'Choose a spice level' } : missingSection ? { key: missingSection._id, label: `Choose ${missingSection.title}` } : missingSpiceSection ? { key: missingSpiceSection._id, label: `Choose spice for ${missingSpiceSection.title}` } : missingItemSpice ? { key: missingItemSpice.section._id ?? '', label: `Choose spice for ${missingItemSpice.option.item?.name ?? 'an item'}` } : null;
   const goToMissing = () => {
     if (!missing) return;
     setShowMissing(true);
@@ -148,6 +151,10 @@ export default function ItemSheet({
       toast(`Choose spice for ${missingSpiceSection.title}`, 'error');
       return;
     }
+    if (missingItemSpice) {
+      toast(`Choose spice for ${missingItemSpice.option.item?.name ?? 'an item'}`, 'error');
+      return;
+    }
     if (item.hasCombo && item.sections) {
       for (const section of item.sections) {
         const count = (combo[section._id] ?? []).length;
@@ -168,7 +175,7 @@ export default function ItemSheet({
       selectedSpiceLevel: spice as SpiceLevel,
       isEcoFriendlyContainer: eco,
       ecoContainerCharge: eco ? item.ecoContainerCharge : undefined,
-      comboSelections: pruneSectionSpice(item.sections, combo),
+      comboSelections: pruneComboSpice(item, combo),
     }, withQuantity ? qty : 1);
   };
 
@@ -274,6 +281,26 @@ export default function ItemSheet({
                       {comboItemQuantity(si.quantity) > 1 ? <Text size={13} color={C.muted}>{`  x ${comboItemQuantity(si.quantity)}`}</Text> : null}
                     </Text>
                   </Row>
+                ))}
+                {itemSpice.filter((p) => p.section._id === section._id).map((p) => (
+                  <View key={p.option._id} style={{ marginTop: S.sm }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: S.xs }}>
+                      <Text weight="semibold" size={14}>{`${p.option.item?.name ?? 'Item'} spice`}</Text>
+                      <Text size={13} weight={showMissing && missingItemSpice?.option._id === p.option._id ? 'bold' : 'regular'} color={C.red}>{showMissing && missingItemSpice?.option._id === p.option._id ? 'Pick one' : 'Required'}</Text>
+                    </View>
+                    {p.levels.map((level) => {
+                      const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
+                      return (
+                        <Row key={level} selected={p.level === level} multi={false} onPress={() => setCombo((prev) => withOptionSpice(prev, p.section._id ?? '', p.option._id ?? '', level))} right={
+                          <View style={{ flexDirection: 'row', gap: 3 }}>
+                            {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT_COLORS[i] }} />)}
+                          </View>
+                        }>
+                          <Text weight="medium" size={15}>{formatSpiceLevel(level)}</Text>
+                        </Row>
+                      );
+                    })}
+                  </View>
                 ))}
                 {item.hasSpiceLevel && sectionOwnsSpice(section) && chosen.length > 0 && (
                   <View style={{ marginTop: S.sm }}>
