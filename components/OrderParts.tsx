@@ -5,7 +5,7 @@ import { Text } from '@/components/ui';
 import { Order, OrderDay, OrderDayItem } from '@/types/order';
 import { getStatusColor, getStatusLabel } from '@/lib/orderHelpers';
 import { formatSpiceLevel } from '@/utils/formatters';
-import { getSectionSpice } from '@/lib/comboSpice';
+import { getOptionSpice, getSectionSpice } from '@/lib/comboSpice';
 
 export function StatusChip({ status }: { status: Order['status'] }) {
   const color = getStatusColor(status);
@@ -35,7 +35,10 @@ export function itemLines(item: OrderDayItem): string[] {
   if (tags.length) out.push(tags.join('  ·  '));
   for (const s of item.food.sections ?? []) {
     const ids = item.comboSelections?.[s._id] ?? [];
-    const names = s.selectedItems.filter((si) => ids.includes(si._id)).map((si) => si.item.name);
+    const names = s.selectedItems.filter((si) => ids.includes(si._id)).map((si) => {
+      const level = getOptionSpice(item.comboSelections, s._id, si._id);
+      return level ? `${si.item.name}  ·  ${formatSpiceLevel(level)}` : si.item.name;
+    });
     const own = getSectionSpice(item.comboSelections, s._id);
     if (names.length) out.push(`${s.title}: ${names.join(', ')}${own ? `  ·  ${formatSpiceLevel(own)}` : ''}`);
   }
