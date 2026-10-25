@@ -5,7 +5,7 @@ import { StackActions, useNavigation } from '@react-navigation/native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CreditNotice from '@/components/CreditNotice';
-import DeliveryTracker from '@/components/DeliveryTracker';
+import DeliveryTracker, { Tracking } from '@/components/DeliveryTracker';
 import { deliveryOf, ItemRow, StatusChip } from '@/components/OrderParts';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Divider, Text } from '@/components/ui';
@@ -20,6 +20,7 @@ import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function OrderDetail() {
   const bottomSpace = useTabBarSpace(false);
+  const [track, setTrack] = useState<Tracking | null>(null);
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -83,11 +84,20 @@ export default function OrderDetail() {
           <CreditNotice order={order} />
         </Card>
 
-        <DeliveryTracker orderId={order.orderId} />
+        <DeliveryTracker orderId={order.orderId} onState={setTrack} />
 
         {order.items.map((d, i) => (
           <Card key={i}>
-            <Text weight="bold" size={15} color={C.brandDark}>Delivery {deliveryOf(d)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.sm }}>
+              <Text weight="bold" size={15} color={C.brandDark}>Delivery {deliveryOf(d)}</Text>
+              {/* the day the driver has finished gets a tick, so an order with several days shows which ones are done */}
+              {track?.state === 'delivered' && !!track.date && String(d.actualDeliveryDate || d.deliveryDate).slice(0, 10) === track.date && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="checkmark-circle" size={18} color={C.green} />
+                  <Text weight="semibold" size={13} color={C.green}>Delivered</Text>
+                </View>
+              )}
+            </View>
             <View style={{ marginTop: S.sm }}>{d.items.map((it, j) => <ItemRow key={j} item={it} />)}</View>
           </Card>
         ))}
