@@ -14,12 +14,14 @@ interface Prefs {
   orders: boolean;
   menu: boolean;
   reminders: boolean;
+  updates: boolean;
 }
 
 const ROWS: Array<{ key: keyof Prefs; label: string; hint: string }> = [
   { key: 'orders', label: 'Order updates', hint: 'Confirmed, out for delivery, delivered, and payment problems' },
   { key: 'menu', label: 'Menu alerts', hint: 'When a new menu is up' },
   { key: 'reminders', label: 'Cart reminders', hint: 'If you leave items in your cart' },
+  { key: 'updates', label: 'App updates', hint: 'When a new version of the app is ready' },
 ];
 
 export default function NotificationSettings() {
@@ -40,7 +42,7 @@ export default function NotificationSettings() {
       const r = await authenticatedFetch('/api/push/preferences');
       const j = await r.json();
       // menu alerts count as ON only when the email is really on the menu alerts list (the site's default is on, but nobody was added)
-      if (r.ok && j.data) setPrefs({ orders: Boolean(j.data.orders), menu: Boolean(j.data.menu) && Boolean(j.data.menuSubscribed), reminders: Boolean(j.data.reminders) });
+      if (r.ok && j.data) setPrefs({ orders: Boolean(j.data.orders), menu: Boolean(j.data.menu) && Boolean(j.data.menuSubscribed), reminders: Boolean(j.data.reminders), updates: j.data.updates !== false });
     } catch {
       // the switches stay hidden until they load
     }
