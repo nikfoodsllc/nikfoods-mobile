@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
 import * as Device from 'expo-device';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import { authenticate, isLockEnabled, lockSupport, setLockEnabled } from '@/lib/
 import { forgetFaceIdSignInHere, isFaceIdSignInOn, turnOffFaceIdSignIn, turnOnFaceIdSignIn } from '@/lib/deviceLogin';
 import { unregisterPush } from '@/lib/push';
 import * as localCart from '@/lib/localStorageCart';
+import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 type Row = { at: string; amount: number; type: 'issued' | 'used' | 'restored' | 'adjusted'; orderId?: string; note?: string; items?: Array<{ name: string; quantity: number; amount: number }> };
@@ -52,6 +53,8 @@ function Item({ icon, label, onPress, value, danger }: { icon: keyof typeof Ioni
 }
 
 export default function Account() {
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTopOnTab('account', () => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
@@ -113,7 +116,7 @@ export default function Account() {
   if (!user) {
     return (
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-        <ScrollView contentContainerStyle={{ padding: S.xl, paddingBottom: bottomSpace, gap: S.md, flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={{ padding: S.xl, paddingBottom: bottomSpace, gap: S.md, flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
           <View style={{ alignItems: 'center', gap: S.md, marginBottom: S.xl }}>
             <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="person-outline" size={38} color={C.brand} />
@@ -216,7 +219,7 @@ export default function Account() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.surface }}>
-      <ScrollView contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: S.lg, gap: S.lg, paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>
         <Text weight="display" size={44}>Profile</Text>
 
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>

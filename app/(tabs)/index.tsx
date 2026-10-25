@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { greeting, useHomeIntro } from '@/lib/homeIntro';
 import { pickNextDelivery, todayPacific } from '@/lib/nextDelivery';
+import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { Order } from '@/types/order';
@@ -28,6 +29,8 @@ const logo = require('../../assets/images/nikfoods-logo.png');
 
 /** Home: where you are delivering, your next delivery, a way into the menu and the menu alerts. */
 export default function Home() {
+  const scrollRef = useRef<Animated.ScrollView>(null);
+  useScrollToTopOnTab('index', () => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   const bottomSpace = useTabBarSpace(true);
   const router = useRouter();
   const { user } = useAuth();
@@ -74,6 +77,7 @@ export default function Home() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
       <Animated.ScrollView
+        ref={scrollRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: S.xl, paddingTop: S.md, paddingBottom: bottomSpace, gap: S.xl + 4 }}

@@ -16,9 +16,12 @@ import { useCart } from '@/contexts/CartContext';
 import { DEFAULT_MIN_CART_VALUE, getCheckoutMessage } from '@/lib/cartLogic';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
 import ActionBar, { ACTION_BAR_SPACE } from '@/components/ActionBar';
+import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
 export default function CartScreen() {
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTopOnTab('cart', () => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   const bottomSpace = useTabBarSpace(false);
   const router = useRouter();
   const toast = useToast();
@@ -103,7 +106,7 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace + ACTION_BAR_SPACE, gap: S.lg }} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: S.lg, paddingBottom: bottomSpace + ACTION_BAR_SPACE, gap: S.lg }} showsVerticalScrollIndicator={false}>
         <Text weight="display" size={44}>Cart</Text>
         <DeliveryBar />
 
