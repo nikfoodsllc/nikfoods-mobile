@@ -93,7 +93,7 @@ export default function Login() {
   };
 
   return (
-    <AuthShell title="Welcome back" subtitle="Log in to check out and see your orders">
+    <AuthShell title="Welcome, to the world of authentic food." subtitle="Log in to check out and see your orders">
       <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" returnKeyType="next" />
       <Field label="Password" value={password} onChangeText={setPassword} secure autoCapitalize="none" autoComplete="current-password" textContentType="password" returnKeyType="go" onSubmitEditing={submit} />
       {!!error && (
@@ -106,10 +106,10 @@ export default function Login() {
       <Pressable onPress={() => router.push('/forgot-password')} style={{ alignItems: 'center', paddingVertical: 18 }}>
         <Text weight="semibold" size={15} color={C.brandDark}>Forgot password?</Text>
       </Pressable>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
-        <Text size={15} color={C.muted}>New here?</Text>
-        <Pressable onPress={() => router.replace('/signup')}>
-          <Text weight="bold" size={15} color={C.brandDark}>Create an account</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 6 }}>
+        <Text size={18} color={C.muted}>New here?</Text>
+        <Pressable onPress={() => router.replace('/signup')} hitSlop={10} accessibilityRole="button">
+          <Text weight="bold" size={18} color={C.brandDark}>Create an account</Text>
         </Pressable>
       </View>
     </AuthShell>
