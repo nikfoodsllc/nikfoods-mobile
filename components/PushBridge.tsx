@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/contexts/AuthContext';
+import { openStore } from '@/lib/appUpdate';
 import { useApiClient } from '@/hooks/useApiClient';
 import { askForPush, markAsked, pushState, registerPush, targetForNotification, wasAskedBefore, type NotificationTarget } from '@/lib/push';
 
@@ -29,6 +30,7 @@ export default function PushBridge() {
     }
     else if (target.kind === 'pay') void WebBrowser.openBrowserAsync(target.url);
     else if (target.kind === 'cart') router.navigate('/cart');
+    else if (target.kind === 'update') openStore();
     else router.navigate('/');
   };
   const openRef = useRef(open);

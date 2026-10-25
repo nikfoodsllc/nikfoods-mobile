@@ -118,7 +118,7 @@ export async function unregisterPush(authenticatedFetch: Fetcher): Promise<void>
   localStorage.removeItem(TOKEN_KEY);
 }
 
-export type NotificationTarget = { kind: 'order'; id: string } | { kind: 'pay'; url: string } | { kind: 'cart' } | { kind: 'menu' };
+export type NotificationTarget = { kind: 'order'; id: string } | { kind: 'pay'; url: string } | { kind: 'cart' } | { kind: 'menu' } | { kind: 'update' };
 
 /** What to open when a notification is tapped, from the data the site sent with it. Only our own site's pay links are opened. */
 export function targetForNotification(data: unknown): NotificationTarget | null {
@@ -135,5 +135,7 @@ export function targetForNotification(data: unknown): NotificationTarget | null 
   }
   if (d.type === 'cart') return { kind: 'cart' };
   if (d.type === 'menu') return { kind: 'menu' };
+  // "a new version is ready": opens the App Store page (the app never opens any other address from a notification)
+  if (d.type === 'update') return { kind: 'update' };
   return null;
 }

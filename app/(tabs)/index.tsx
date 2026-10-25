@@ -10,6 +10,7 @@ import ChefsPick from '@/components/ChefsPick';
 import DeliveryTracker from '@/components/DeliveryTracker';
 import HomeBanners from '@/components/HomeBanners';
 import MenuSubscribe from '@/components/MenuSubscribe';
+import UpdateBanner from '@/components/UpdateBanner';
 import { deliveryOf, StatusChip } from '@/components/OrderParts';
 import Reveal from '@/components/Reveal';
 import { Button, Card, Eyebrow, Text, tap } from '@/components/ui';
@@ -80,6 +81,7 @@ export default function Home() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={async () => { setRefreshing(true); await Promise.all([reload(), loadNext()]); setRefreshing(false); }} />}
       >
+        <UpdateBanner />
         <Reveal index={0}>
           <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
           {/* a fixed box: whatever the text is, it shrinks until it fits */}
