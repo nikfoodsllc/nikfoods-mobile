@@ -72,7 +72,7 @@ export default function Home() {
   }, [loadNext]);
 
   const first = (user?.name ?? '').trim().split(/\s+/)[0];
-  const hello = greeting(intro, first);
+  const hello = intro === null ? null : greeting(intro, first);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
@@ -90,7 +90,7 @@ export default function Home() {
           <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
           {/* a fixed box: whatever the text is, it shrinks until it fits */}
           <View style={{ height: GREETING_BOX, marginTop: S.xl, justifyContent: 'center' }}>
-            {'custom' in hello ? (
+            {hello === null ? null : 'custom' in hello ? (
               <Text weight="display" size={46} color={C.brandDark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.4} style={{ maxHeight: GREETING_BOX }}>{hello.custom.map((part, i) => (
                   <Text key={i} weight="display" size={46} color={part.isName ? C.text : C.brandDark}>{part.text}</Text>
                 ))}</Text>
