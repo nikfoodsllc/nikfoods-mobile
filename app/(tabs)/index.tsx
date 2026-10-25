@@ -141,9 +141,9 @@ export default function Home() {
           <MenuSubscribe />
         </Reveal>
 
-        {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
+        {!user && <Button label="Log in / Sign up" variant="outline" onPress={() => router.push('/login')} />}
 
-        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic Indian food delivered to your doorstep.</Eyebrow>
+        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic Indian food delivered to your door.</Eyebrow>
 
       </Animated.ScrollView>
       <CartBar />

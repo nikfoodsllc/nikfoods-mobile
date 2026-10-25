@@ -72,7 +72,7 @@ export default function Orders() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: S.xxl, gap: S.md }}>
           <Ionicons name="receipt-outline" size={48} color={C.faint} />
           <Text weight="bold" size={20}>Log in to see your orders</Text>
-          <Button label="Log in" onPress={() => router.push('/login')} style={{ alignSelf: 'stretch', marginTop: S.md }} />
+          <Button label="Log in / Sign up" onPress={() => router.push('/login')} style={{ alignSelf: 'stretch', marginTop: S.md }} />
         </View>
       </SafeAreaView>
     );

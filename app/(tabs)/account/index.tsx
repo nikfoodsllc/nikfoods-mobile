@@ -121,7 +121,7 @@ export default function Account() {
             <Text weight="display" size={38}>Your account</Text>
             <Text size={15} color={C.muted} style={{ textAlign: 'center' }}>Log in to check out, track orders and save addresses</Text>
           </View>
-          <Button label="Log in" onPress={() => router.push('/login')} />
+          <Button label="Log in / Sign up" onPress={() => router.push('/login')} />
           <Button label="Create account" variant="outline" onPress={() => router.push('/signup')} />
           <View style={{ marginTop: S.xl }}>
             <Legal />
