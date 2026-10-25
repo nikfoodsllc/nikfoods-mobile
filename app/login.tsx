@@ -93,7 +93,7 @@ export default function Login() {
   };
 
   return (
-    <AuthShell title="Welcome, to the world of authentic food." subtitle="Log in to check out and see your orders">
+    <AuthShell title="Welcome, to the world of authentic food.">
       <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" returnKeyType="next" />
       <Field label="Password" value={password} onChangeText={setPassword} secure autoCapitalize="none" autoComplete="current-password" textContentType="password" returnKeyType="go" onSubmitEditing={submit} />
       {!!error && (
