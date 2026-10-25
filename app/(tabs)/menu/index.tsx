@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Switch, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -13,11 +13,14 @@ import { Button, Eyebrow, Text, tap } from '@/components/ui';
 import { C, R, S, shadow } from '@/constants/theme';
 import { buildMenuSections, categoryOrSubsHaveItems, countDishes } from '@/lib/homeMenu';
 import { useHomeMenu } from '@/lib/useHomeMenu';
+import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { useVegOnly } from '@/lib/vegOnly';
 
 /** Menu: every category as a big picture row; tap one to see its dishes. Searching shows matching dishes from the whole menu. */
 export default function MenuCategories() {
+  const listRef = useRef<FlatList>(null);
+  useScrollToTopOnTab('menu', () => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   const bottomSpace = useTabBarSpace(true);
   const router = useRouter();
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
@@ -69,6 +72,7 @@ export default function MenuCategories() {
       ) : (
         <>
           <FlatList
+            ref={listRef}
             data={rows}
             keyExtractor={(r) => r.meta._id}
             ListHeaderComponent={<View style={{ paddingHorizontal: S.xl, paddingBottom: S.lg }}><DeliveryBar /></View>}
