@@ -7,7 +7,7 @@ import { SITE_URL } from '@/constants/config';
 /**
 
  * sends order updates, menu alerts and cart reminders to it. The customer decides in iPhone Settings and in the app
- * (Account > Notifications). The question is asked once, the first time the app opens (PushBridge); after that
+ * (Account > Notifications). The question is asked once: when the customer first signs in (PushBridge) or, if not yet, on the Order placed screen; after that
  * the customer uses Account > Notifications.
  */
 export type PushState = 'granted' | 'denied' | 'undetermined' | 'unavailable';

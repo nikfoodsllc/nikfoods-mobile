@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
@@ -47,7 +47,22 @@ export default function PushBridge() {
 
   // a signed-in customer who allowed notifications: (re)register this phone (the token can change)
   useEffect(() => {
-    if (user) void registerPush(authenticatedFetch);
+    if (!user) return;
+    void registerPush(authenticatedFetch);
+    // first sign-in: ask once (our own question first, so iPhone's one-time box is only used when they say yes)
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (cancelled || wasAskedBefore() || (await pushState()) !== 'undetermined') return;
+      markAsked();
+      Alert.alert('Get order and menu updates?', 'We will tell you when your order is on its way and delivered, and when the new menu is out.', [
+        { text: 'Not now', style: 'cancel', onPress: () => void registerPush(authenticatedFetch) },
+        { text: 'Turn on', onPress: async () => {
+          const state = await askForPush();
+          if (state !== 'unavailable') void registerPush(authenticatedFetch);
+        } },
+      ]);
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
