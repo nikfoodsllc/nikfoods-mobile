@@ -52,7 +52,7 @@ export default function Checkout() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [instructions, setInstructions] = useState('');
-  const [tipPct, setTipPct] = useState(0);
+  const [tipPct, setTipPct] = useState(10);
   // a tip typed in dollars; when set it replaces the percentage
   const [tipText, setTipText] = useState('');
   const customTip = parseTipText(tipText);
