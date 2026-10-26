@@ -17,7 +17,7 @@ import { SMS_CONSENT_LABEL, SMS_CONSENT_SMALL_PRINT } from '@/lib/smsConsent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
-import { cartTotalsWithTip } from '@/lib/checkoutTotals';
+import { cartTotalsWithTip, cleanTipText, MAX_TIP_AMOUNT, parseTipText } from '@/lib/checkoutTotals';
 import { closedItemsNotice, parseClosedItems } from '@/lib/closedDaysNotice';
 import { emptyCartEverywhere } from '@/lib/cartSync';
 import * as localCart from '@/lib/localStorageCart';
@@ -53,6 +53,9 @@ export default function Checkout() {
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [instructions, setInstructions] = useState('');
   const [tipPct, setTipPct] = useState(0);
+  // a tip typed in dollars; when set it replaces the percentage
+  const [tipText, setTipText] = useState('');
+  const customTip = parseTipText(tipText);
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditLoaded, setCreditLoaded] = useState(false);
   const [useCredit, setUseCredit] = useState(true);
@@ -147,7 +150,7 @@ export default function Checkout() {
     })();
   }, [user, authenticatedFetch]);
 
-  const tipAmount = cart ? (cart.subtotal * tipPct) / 100 : 0;
+  const tipAmount = customTip !== null ? customTip : cart ? (cart.subtotal * tipPct) / 100 : 0;
   const localCredit = useMemo(
     () => (useCredit && creditBalance > 0 && cart && !cart.appliedCoupon?.discountAmount ? planCreditForOrder({ subtotal: cart.subtotal, deliveryFee: cart.deliveryFee, tip: tipAmount, balanceCents: toCents(creditBalance) }) : null),
     [useCredit, creditBalance, cart, tipAmount]
@@ -157,7 +160,7 @@ export default function Checkout() {
   const covered = useCredit && creditBalance > 0 && (serverCredit ? serverCredit.covered : Boolean(localCredit && localCredit.cardCents === 0 && localCredit.creditCents > 0));
   const creditLocked = Boolean(orderId);
 
-  const totals = cart ? cartTotalsWithTip(cart, tipPct, credited) : null;
+  const totals = cart ? cartTotalsWithTip(cart, tipPct, credited, customTip) : null;
   const canPay = Boolean(cart?.canCheckout && isCompleteAddress(cart?.selectedAddress));
   const creditReady = !user || creditLoaded;
 
@@ -183,7 +186,7 @@ export default function Checkout() {
       const r = await authenticatedFetch('/api/checkout/payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cart, tipPercentage: tipPct, currency: 'usd', paymentIntentId: intentId ?? undefined, useStoreCredit: useCredit && creditBalance > 0, orderId: orderId ?? undefined }),
+        body: JSON.stringify({ cart, tipPercentage: tipPct, tipAmount: customTip ?? undefined, currency: 'usd', paymentIntentId: intentId ?? undefined, useStoreCredit: useCredit && creditBalance > 0, orderId: orderId ?? undefined }),
       });
       const data = await r.json();
       if (!r.ok || !data.success) {
@@ -211,13 +214,13 @@ export default function Checkout() {
     } finally {
       setPreparing(false);
     }
-  }, [cart, authenticatedFetch, tipPct, intentId, useCredit, creditBalance, orderId, handleClosed]);
+  }, [cart, authenticatedFetch, tipPct, customTip, intentId, useCredit, creditBalance, orderId, handleClosed]);
 
   const prepareRef = useRef(prepare);
   prepareRef.current = prepare;
 
   // open the payment session as soon as the cart can be ordered, and again when the amount changes
-  const amountKey = `${tipPct}-${cart?.subtotal}-${cart?.platformFee}-${cart?.deliveryFee}-${cart?.tax}-${useCredit && creditBalance > 0}-${creditBalance}`;
+  const amountKey = `${tipPct}-${customTip ?? ''}-${cart?.subtotal}-${cart?.platformFee}-${cart?.deliveryFee}-${cart?.tax}-${useCredit && creditBalance > 0}-${creditBalance}`;
   useEffect(() => {
     if (!canPay || !creditReady || orderId) return;
     const t = setTimeout(() => void prepareRef.current(), 350);
@@ -243,6 +246,7 @@ export default function Checkout() {
         cart,
         customerInfo: { name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') },
         tipPercentage: tipPct,
+        tipAmount: customTip ?? undefined,
         paymentMethod: 'Credit Card',
         currency: 'usd',
         paymentIntentId: intentId ?? undefined,
@@ -477,15 +481,20 @@ export default function Checkout() {
             <Text weight="bold" size={17}>Add a tip</Text>
             <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
               {TIPS.map((p) => {
-                const on = tipPct === p;
+                const on = customTip === null && tipPct === p;
                 return (
-                  <Pressable key={p} onPress={() => { tap(); setTipPct(p); }} accessibilityRole="button" accessibilityLabel={p === 0 ? 'No tip' : `${p} percent tip`} style={{ flex: 1, height: 58, borderRadius: R.md, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, alignItems: 'center', justifyContent: 'center' }}>
+                  <Pressable key={p} onPress={() => { tap(); setTipPct(p); setTipText(''); }} accessibilityRole="button" accessibilityLabel={p === 0 ? 'No tip' : `${p} percent tip`} style={{ flex: 1, height: 58, borderRadius: R.md, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, alignItems: 'center', justifyContent: 'center' }}>
                     <Text weight="bold" size={16}>{p === 0 ? 'None' : `${p}%`}</Text>
                     {p > 0 && <Text size={12} color={C.muted}>${((cart.subtotal * p) / 100).toFixed(2)}</Text>}
                   </Pressable>
                 );
               })}
             </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.xs, marginTop: S.sm, height: 48, borderRadius: R.md, borderWidth: 1.5, borderColor: tipText !== '' && customTip === null ? C.red : customTip !== null ? C.brand : C.line, backgroundColor: C.white, paddingHorizontal: S.md }}>
+              <Text size={16} color={C.muted}>$</Text>
+              <TextInput value={tipText} onChangeText={(t) => setTipText(cleanTipText(t))} placeholder="Other amount" placeholderTextColor={C.faint} keyboardType="decimal-pad" maxLength={7} style={{ flex: 1, fontFamily: FONT.medium, fontSize: 16, color: C.text }} accessibilityLabel="Tip amount in dollars" />
+            </View>
+            {tipText !== '' && customTip === null && <Text size={12} color={C.red} style={{ marginTop: S.xs }}>Up to ${MAX_TIP_AMOUNT}</Text>}
           </Card>
 
           {creditBalance > 0 && (

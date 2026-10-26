@@ -124,7 +124,7 @@ export default function Account() {
             <Text weight="display" size={38}>Your account</Text>
             <Text size={15} color={C.muted} style={{ textAlign: 'center' }}>Log in to check out, track orders and save addresses</Text>
           </View>
-          <Button label="Log in / Sign up" onPress={() => router.push('/login')} />
+          <Button label="Log in" onPress={() => router.push('/login')} />
           <Button label="Create account" variant="outline" onPress={() => router.push('/signup')} />
           <View style={{ marginTop: S.xl }}>
             <Legal />
@@ -182,6 +182,13 @@ export default function Account() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const confirmSignOut = () => {
+    Alert.alert('Log out?', undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: signOut },
+    ]);
   };
 
   const signOut = () => {
@@ -276,7 +283,7 @@ export default function Account() {
         <Legal />
 
         <Card style={{ paddingVertical: S.xs }}>
-          <Item icon="log-out-outline" label="Log out" onPress={signOut} />
+          <Item icon="log-out-outline" label="Log out" onPress={confirmSignOut} />
           <Divider />
           <Item icon="trash-outline" label="Delete account" onPress={deleteAccount} danger />
         </Card>
