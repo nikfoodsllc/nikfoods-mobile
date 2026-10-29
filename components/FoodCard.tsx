@@ -18,6 +18,7 @@ export default function FoodCard({
   starting,
   veg,
   available = true,
+  soldOut,
   quantity,
   inCartCount,
   customizable,
@@ -34,6 +35,8 @@ export default function FoodCard({
   starting?: boolean;
   veg?: boolean;
   available?: boolean;
+  /** the order limit was reached: says Out of stock */
+  soldOut?: boolean;
   quantity: number;
   inCartCount: number;
   customizable: boolean;
@@ -76,7 +79,7 @@ export default function FoodCard({
             <View />
           )}
           {off ? (
-            <Text weight="medium" size={13} color={C.faint}>{closed ? 'Ordering closed' : 'Unavailable'}</Text>
+            <Text weight="medium" size={13} color={C.faint}>{closed ? 'Ordering closed' : soldOut ? 'Out of stock' : 'Unavailable'}</Text>
           ) : quantity > 0 ? (
             <Stepper compact value={quantity} onMinus={onDecrement} onPlus={onIncrement} />
           ) : (

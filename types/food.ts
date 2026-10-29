@@ -14,6 +14,13 @@ export interface FoodItem {
   available: boolean;
   /** Chef's Pick: marked in the admin; shown in the Chef's Pick row on Home */
   chefsPick?: boolean;
+  /** the item has a special instructions box (set in the admin; off unless Yes) */
+  allowInstructions?: boolean;
+  /** the order limit was reached: the item shows Out of stock and cannot be ordered (available is false too) */
+  soldOut?: boolean;
+  /** what is left of an item with an order limit, in `stockBase` (units, or ounces); missing when there is no limit */
+  stockRemaining?: number;
+  stockBase?: 'units' | 'oz';
   isDraft?: boolean;
   availableWeekDays?: string[];
   portions?: string[];
@@ -69,6 +76,8 @@ export interface SelectedComboItem {
     /** The item's own spice setup (used by combos with a spice mode) */
     hasSpiceLevel?: boolean;
     spiceLevel?: string[];
+    /** the item's order limit was reached: the option shows Out of stock and cannot be picked */
+    soldOut?: boolean;
   };
   portion?: string;
   /** How many of this item come with one combo (missing = 1) */

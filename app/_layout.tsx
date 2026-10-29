@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppLock from '@/components/AppLock';
 import PushBridge from '@/components/PushBridge';
+import StockLimitBridge from '@/components/StockLimitBridge';
 import { ToastProvider } from '@/components/Toast';
 import { APP_SCHEME, APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
 import { C } from '@/constants/theme';
@@ -49,6 +50,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'} merchantIdentifier={APPLE_MERCHANT_ID} urlScheme={APP_SCHEME}>
         <ToastProvider>
+          <StockLimitBridge />
           <AuthProvider>
             <CartProvider>
               <AppLock>

@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { cartTotalsWithTip, cleanTipText, MAX_TIP_AMOUNT, parseTipText } from '@/lib/checkoutTotals';
-import { closedItemsNotice, parseClosedItems } from '@/lib/closedDaysNotice';
+import { closedItemsNotice, outOfStockNotice, parseClosedItems, parseOutOfStock } from '@/lib/closedDaysNotice';
 import { emptyCartEverywhere } from '@/lib/cartSync';
 import * as localCart from '@/lib/localStorageCart';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
@@ -166,7 +166,18 @@ export default function Checkout() {
 
   // ---- the website's "closed days" handling: stay here, remove what closed, say so ----
   const handleClosed = useCallback(
-    async (status: number, data: { code?: string; error?: string; closedItems?: unknown } | null) => {
+    async (status: number, data: { code?: string; error?: string; closedItems?: unknown; outOfStock?: unknown } | null) => {
+      // an item sold out while the customer was here: remove it and say so (same as the website)
+      if (status === 409 && data?.code === 'OUT_OF_STOCK') {
+        const short = parseOutOfStock(data.outOfStock);
+        if (short.length > 0) {
+          localCart.removeSoldOutLines(short.map((i) => i.foodItemId));
+          setClosed(outOfStockNotice(short));
+          setBanner('');
+          await refreshCart();
+          return true;
+        }
+      }
       if (status !== 409 || data?.code !== 'ORDER_CUTOFF_CLOSED') return false;
       const closedItems = parseClosedItems(data.closedItems);
       const { removed, linesLeft } = localCart.removeClosedLines(closedItems);
