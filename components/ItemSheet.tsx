@@ -196,7 +196,7 @@ export default function ItemSheet({
   const total = price * (withQuantity ? qty : 1);
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-    // (the insets come from the app's root: a Modal is a separate window and cannot measure them itself)
+    {/* the insets come from the app's root: a Modal is a separate window and cannot measure them itself */}
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       {/* the page's top bar: close, and the dish's name once it has scrolled out of sight (so you always know what you are choosing for) */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, paddingHorizontal: S.lg, paddingVertical: S.sm, minHeight: 56 }}>

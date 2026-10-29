@@ -8,6 +8,8 @@ import { FoodItem } from '@/types/food';
 import { DayType } from '@/types/cart';
 import { CartCustomizations } from '@/types/localCart';
 import { DayOption, generateAvailableDatesFromAPI } from '@/lib/dayAvailabilityClient';
+import { stockLeftFor } from '@/lib/localStorageCart';
+import { useToast } from '@/components/Toast';
 
 export interface DaySelection {
   day: DayType;
@@ -27,6 +29,7 @@ export default function DaySheet({
   onClose: () => void;
   onConfirm: (selected: DaySelection[]) => void;
 }) {
+  const toast = useToast();
   const [days, setDays] = useState<DayOption[] | null>(null);
   const [picked, setPicked] = useState<Map<string, number>>(new Map());
 
@@ -47,20 +50,35 @@ export default function DaySheet({
   const unit = customizations?.selectedPortionPrice != null ? customizations.selectedPortionPrice : item.price;
   const unitWithEco = unit + (customizations?.isEcoFriendlyContainer && customizations.ecoContainerCharge ? customizations.ecoContainerCharge : 0);
 
-  const toggle = (date: string) =>
+  // an item with an order limit: all the days together cannot go above what is left
+  const left = item ? stockLeftFor(item, customizations?.selectedPortion) : null;
+  const pickedTotal = Array.from(picked.values()).reduce((n, q) => n + q, 0);
+  const full = left !== null && pickedTotal >= left;
+  const tellLeft = () => toast(left !== null && left <= 0 ? 'Sold out' : `Only ${left} left`, 'error');
+  const toggle = (date: string) => {
+    if (!picked.has(date) && full) {
+      tellLeft();
+      return;
+    }
     setPicked((prev) => {
       const next = new Map(prev);
       if (next.has(date)) next.delete(date);
       else next.set(date, 1);
       return next;
     });
-  const setQty = (date: string, q: number) =>
+  };
+  const setQty = (date: string, q: number) => {
+    if (q > (picked.get(date) ?? 0) && full) {
+      tellLeft();
+      return;
+    }
     setPicked((prev) => {
       const next = new Map(prev);
       if (q <= 0) next.delete(date);
       else next.set(date, q);
       return next;
     });
+  };
 
   const confirm = () => {
     const byDate = new Map((days ?? []).map((d) => [d.date, d]));
@@ -122,7 +140,7 @@ export default function DaySheet({
                 </View>
                 <Text weight="semibold" size={16} style={{ flex: 1 }}>{d.formattedDate}</Text>
               </Pressable>
-              {on && <Stepper compact value={q} onMinus={() => setQty(d.date, q - 1)} onPlus={() => setQty(d.date, q + 1)} />}
+              {on && <Stepper compact value={q} onMinus={() => setQty(d.date, q - 1)} onPlus={() => setQty(d.date, q + 1)} plusDisabled={full} />}
             </View>
           );
         })
