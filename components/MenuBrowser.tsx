@@ -337,6 +337,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
                   starting={Boolean(item.portions?.length)}
                   veg={item.veg}
                   available={item.available}
+                  soldOut={item.soldOut}
                   closed={closed}
                   customizable={custom}
                   quantity={custom ? 0 : inCart}

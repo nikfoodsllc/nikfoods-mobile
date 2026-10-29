@@ -12,6 +12,9 @@ import { formatSpiceLevel, normalizeSpiceLevelKey } from '@/utils/formatters';
 import { comboNeedsOverallSpice, getSectionSpice, optionsMissingSpice, pickedSpiceOptions, pruneComboSpice, sectionOwnsSpice, sectionsMissingSpice, withOptionSpice, withSectionSpice } from '@/lib/comboSpice';
 import { comboItemQuantity } from '@/lib/comboQuantity';
 import ItemGallery from '@/components/ItemGallery';
+import Field from '@/components/Field';
+import { INSTRUCTIONS_MAX, cleanItemInstructions } from '@/lib/itemInstructions';
+import { stockLeftFor } from '@/lib/localStorageCart';
 
 const SPICE_DOTS: Record<string, number> = {
   mild: 1, 'mild (kid friendly)': 1, normal: 2, medium: 3, 'medium spice': 3, 'semi-spicy': 4, 'semi spicy': 4, spicy: 4, 'super-spicy': 5, 'super spicy': 5, 'extra spicy': 5, hot: 5,
@@ -23,14 +26,17 @@ export function comboDefaults(item: FoodItem): Record<string, string[]> {
   const defaults: Record<string, string[]> = {};
   for (const section of item.sections ?? []) {
     if (!section?._id || !Array.isArray(section.selectedItems)) continue;
-    const defaultItems = section.selectedItems.filter((i) => i.isDefault);
+    const defaultItems = section.selectedItems.filter((i) => i.isDefault && !i.item?.soldOut);
     const multi = !section.isRequired || (section.maxSelection !== undefined && section.maxSelection > 1);
     if (multi) {
       if (defaultItems.length > 0) defaults[section._id] = defaultItems.map((i) => i._id);
-      else if (section.isRequired && section.minSelection && section.minSelection > 0) defaults[section._id] = section.selectedItems.slice(0, section.minSelection).map((i) => i._id);
+      else if (section.isRequired && section.minSelection && section.minSelection > 0) defaults[section._id] = section.selectedItems.filter((i) => !i.item?.soldOut).slice(0, section.minSelection).map((i) => i._id);
       else defaults[section._id] = [];
     } else if (defaultItems.length >= 1 && defaultItems[0]._id) defaults[section._id] = [defaultItems[0]._id];
-    else if (section.selectedItems.length > 0 && section.selectedItems[0]._id) defaults[section._id] = [section.selectedItems[0]._id];
+    else {
+      const first = section.selectedItems.find((i) => !i.item?.soldOut);
+      if (first?._id) defaults[section._id] = [first._id];
+    }
   }
   return defaults;
 }
@@ -42,14 +48,15 @@ function sectionHint(s: ComboSection): string {
   return min === max ? (max === 1 ? 'Choose 1' : `Choose ${max}`) : `Choose ${min} to ${max}`;
 }
 
-function Row({ selected, multi, onPress, children, right }: { selected: boolean; multi: boolean; onPress: () => void; children: React.ReactNode; right?: React.ReactNode }) {
+function Row({ selected, multi, onPress, children, right, disabled }: { selected: boolean; multi: boolean; onPress: () => void; children: React.ReactNode; right?: React.ReactNode; disabled?: boolean }) {
   return (
     <Pressable
+      disabled={disabled}
       onPress={() => {
         tap();
         onPress();
       }}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 52, paddingVertical: S.sm, paddingHorizontal: S.md, borderRadius: R.md, borderWidth: 1.5, borderColor: selected ? C.brand : C.line, backgroundColor: selected ? C.cream : C.white, marginBottom: S.sm }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 52, paddingVertical: S.sm, paddingHorizontal: S.md, borderRadius: R.md, borderWidth: 1.5, borderColor: selected ? C.brand : C.line, backgroundColor: selected ? C.cream : C.white, marginBottom: S.sm, opacity: disabled ? 0.5 : 1 }}
     >
       <View style={{ width: 22, height: 22, borderRadius: multi ? 6 : 11, borderWidth: 2, borderColor: selected ? C.brand : '#D1D5DB', backgroundColor: selected ? C.brand : C.white, alignItems: 'center', justifyContent: 'center' }}>
         {selected && <Ionicons name="checkmark" size={14} color={C.onBrand} />}
@@ -86,6 +93,7 @@ export default function ItemSheet({
   // once the name has scrolled out of sight it moves into the sheet's top bar, so you always see which dish you are choosing for
   const [pinned, setPinned] = useState(false);
   const [qty, setQty] = useState(1);
+  const [instructions, setInstructions] = useState('');
   const insets = useSafeAreaInsets();
   const sectionY = useRef<Record<string, number>>({});
   const [showMissing, setShowMissing] = useState(false);
@@ -95,6 +103,7 @@ export default function ItemSheet({
     setShowMissing(false);
     setPinned(false);
     setQty(1);
+    setInstructions('');
     sectionY.current = {};
     setPortion(0);
     setSpice('');
@@ -176,9 +185,14 @@ export default function ItemSheet({
       isEcoFriendlyContainer: eco,
       ecoContainerCharge: eco ? item.ecoContainerCharge : undefined,
       comboSelections: pruneComboSpice(item, combo),
+      notes: item.allowInstructions ? cleanItemInstructions(instructions) : undefined,
     }, withQuantity ? qty : 1);
   };
 
+  // an item with an order limit: how many more of this size the cart can take
+  const stockLeft = stockLeftFor(item, item.portions?.[portion]);
+  const soldOut = item.soldOut === true || (stockLeft !== null && stockLeft <= 0);
+  const maxQty = stockLeft !== null ? Math.max(1, Math.min(20, stockLeft)) : 20;
   const total = price * (withQuantity ? qty : 1);
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -272,8 +286,9 @@ export default function ItemSheet({
                     key={si._id}
                     selected={chosen.includes(si._id)}
                     multi={multi}
+                    disabled={si.item?.soldOut === true}
                     onPress={() => pick(section, si._id)}
-                    right={si.price > 0 ? <Text weight="semibold" size={14} color={C.brandDark}>+${si.price.toFixed(2)}</Text> : undefined}
+                    right={si.item?.soldOut ? <Text weight="semibold" size={13} color={C.faint}>Out of stock</Text> : si.price > 0 ? <Text weight="semibold" size={14} color={C.brandDark}>+${si.price.toFixed(2)}</Text> : undefined}
                   >
                     <Text weight="medium" size={15}>
                       {si.item.name}
@@ -327,16 +342,30 @@ export default function ItemSheet({
           })}
         </View>
       )}
+      {item.allowInstructions && (
+        <View style={{ marginTop: S.xl }}>
+          <Field
+            label="Special instructions (optional)"
+            placeholder="For example: less salt"
+            value={instructions}
+            onChangeText={(t) => setInstructions(t.replace(/\n/g, ' ').slice(0, INSTRUCTIONS_MAX))}
+            maxLength={INSTRUCTIONS_MAX}
+            returnKeyType="done"
+            accessibilityLabel="Special instructions"
+          />
+          <Text size={12} color={C.muted} style={{ marginTop: 4, textAlign: 'right' }}>{`${instructions.length}/${INSTRUCTIONS_MAX}`}</Text>
+        </View>
+      )}
       </ScrollView>
       {/* the bottom bar: quantity (day-wise dishes) and the add button, always in reach */}
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.lg, paddingTop: S.md, paddingBottom: Math.max(insets.bottom, S.lg), backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line, flexDirection: 'row', alignItems: 'center', gap: S.md }}>
-        {withQuantity && !closedLabel && (
+        {withQuantity && !closedLabel && !soldOut && (
           <View style={{ flexDirection: 'row', alignItems: 'center', height: 56, borderRadius: 28, borderWidth: 1.5, borderColor: C.line, backgroundColor: C.white }}>
             <Pressable onPress={() => { tap(); setQty((q) => Math.max(1, q - 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="Less" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="remove" size={22} color={qty <= 1 ? C.faint : C.ink} />
             </Pressable>
             <Text weight="bold" size={18} style={{ minWidth: 26, textAlign: 'center' }}>{qty}</Text>
-            <Pressable onPress={() => { tap(); setQty((q) => Math.min(20, q + 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="More" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable onPress={() => { tap(); if (qty >= maxQty) { if (stockLeft !== null) toast(`Only ${stockLeft} left`, 'error'); return; } setQty((q) => Math.min(maxQty, q + 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="More" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="add" size={22} color={C.ink} />
             </Pressable>
           </View>
@@ -344,6 +373,8 @@ export default function ItemSheet({
         <View style={{ flex: 1 }}>
           {closedLabel ? (
             <Button label={closedLabel} disabled onPress={() => {}} />
+          ) : soldOut ? (
+            <Button label="Out of stock" disabled onPress={() => {}} />
           ) : missing ? (
             <Button label={missing.label} onPress={goToMissing} />
           ) : (
