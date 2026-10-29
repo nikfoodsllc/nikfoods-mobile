@@ -346,7 +346,6 @@ export default function ItemSheet({
         <View style={{ marginTop: S.xl }}>
           <Field
             label="Special instructions (optional)"
-            placeholder="For example: less salt"
             value={instructions}
             onChangeText={(t) => setInstructions(t.replace(/\n/g, ' ').slice(0, INSTRUCTIONS_MAX))}
             maxLength={INSTRUCTIONS_MAX}
