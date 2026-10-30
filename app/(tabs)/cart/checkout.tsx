@@ -24,6 +24,8 @@ import * as localCart from '@/lib/localStorageCart';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
 import { paymentIntentIdFromClientSecret, reportPaymentError } from '@/lib/checkout/reportPaymentError';
 import { planCreditForOrder, toCents, toDollars } from '@/lib/storeCredit';
+import { getDefaultFeeRegion } from '@/lib/cartLogic';
+import { currentStoreCountry } from '@/lib/storeCountry';
 import { useAddresses } from '@/lib/useAddresses';
 import ActionBar, { ACTION_BAR_SPACE } from '@/components/ActionBar';
 import { IAddress } from '@/types/auth';
@@ -152,7 +154,7 @@ export default function Checkout() {
 
   const tipAmount = customTip !== null ? customTip : cart ? (cart.subtotal * tipPct) / 100 : 0;
   const localCredit = useMemo(
-    () => (useCredit && creditBalance > 0 && cart && !cart.appliedCoupon?.discountAmount ? planCreditForOrder({ subtotal: cart.subtotal, deliveryFee: cart.deliveryFee, tip: tipAmount, balanceCents: toCents(creditBalance) }) : null),
+    () => (useCredit && creditBalance > 0 && cart && !cart.appliedCoupon?.discountAmount ? planCreditForOrder({ subtotal: cart.subtotal, deliveryFee: cart.deliveryFee, tip: tipAmount, balanceCents: toCents(creditBalance), region: getDefaultFeeRegion() }) : null),
     [useCredit, creditBalance, cart, tipAmount]
   );
   const creditApplied = useCredit && creditBalance > 0 ? (serverCredit ? serverCredit.applied : localCredit ? toDollars(localCredit.creditCents) : 0) : 0;
@@ -197,7 +199,7 @@ export default function Checkout() {
       const r = await authenticatedFetch('/api/checkout/payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cart, tipPercentage: tipPct, tipAmount: customTip ?? undefined, currency: 'usd', paymentIntentId: intentId ?? undefined, useStoreCredit: useCredit && creditBalance > 0, orderId: orderId ?? undefined }),
+        body: JSON.stringify({ cart, tipPercentage: tipPct, tipAmount: customTip ?? undefined, storeCountry: currentStoreCountry(), currency: 'usd', paymentIntentId: intentId ?? undefined, useStoreCredit: useCredit && creditBalance > 0, orderId: orderId ?? undefined }),
       });
       const data = await r.json();
       if (!r.ok || !data.success) {
@@ -258,6 +260,7 @@ export default function Checkout() {
         customerInfo: { name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') },
         tipPercentage: tipPct,
         tipAmount: customTip ?? undefined,
+        storeCountry: currentStoreCountry(),
         paymentMethod: 'Credit Card',
         currency: 'usd',
         paymentIntentId: intentId ?? undefined,
