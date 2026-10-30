@@ -21,6 +21,7 @@ import { routeForIncomingLink } from '@/lib/deepLink';
 import { configureNotifications } from '@/lib/push';
 import { prefetchMenu } from '@/lib/useHomeMenu';
 import { initRuntime, onRedirect } from '@/lib/runtime';
+import { initStoreRegion } from '@/lib/storeCountry';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -32,7 +33,8 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initRuntime()
+    // the App Store country decides the Platform Fee rate, so it is read before the first cart total is shown
+    Promise.all([initRuntime(), initStoreRegion()])
       .catch((e) => console.warn('runtime init failed', e))
       .finally(() => {
         setReady(true);
