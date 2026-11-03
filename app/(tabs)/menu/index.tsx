@@ -52,8 +52,12 @@ export default function MenuCategories() {
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
         </View>
       </View>
-      <MenuFilters />
-      <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+        <View style={{ flex: 1 }}>
+          <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
+        </View>
+        <MenuFilters />
+      </View>
     </View>
   );
 

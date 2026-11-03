@@ -25,13 +25,11 @@ export default function CategoryPage() {
           <Ionicons name="chevron-back" size={22} color={C.ink} />
         </Pressable>
         <Text weight="display" size={30} numberOfLines={2} maxFontSizeMultiplier={1.15} style={{ flex: 1 }}>{name}</Text>
+        <MenuFilters size={40} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text weight="semibold" size={13} color={C.body} maxFontSizeMultiplier={1.1}>Veg</Text>
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
         </View>
-      </View>
-      <View style={{ paddingHorizontal: S.xl, paddingBottom: S.sm, backgroundColor: C.bg }}>
-        <MenuFilters />
       </View>
       <MenuBrowser categoryId={String(id)} />
     </SafeAreaView>
