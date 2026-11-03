@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { C, R, S, shadowSm } from '@/constants/theme';
 import { Stepper, Text, VegDot, tap } from '@/components/ui';
+import AllergenBadges from '@/components/AllergenBadges';
 
 const IMAGE = 92;
 
@@ -17,6 +18,7 @@ export default function FoodCard({
   price,
   starting,
   veg,
+  allergens,
   available = true,
   soldOut,
   quantity,
@@ -34,6 +36,8 @@ export default function FoodCard({
   price: number | null;
   starting?: boolean;
   veg?: boolean;
+  /** allergens the dish contains: a row of badges under the name (tap one to read it) */
+  allergens?: string[];
   available?: boolean;
   /** the order limit was reached: says Out of stock */
   soldOut?: boolean;
@@ -76,6 +80,7 @@ export default function FoodCard({
           <Text weight="semibold" size={16} numberOfLines={3} style={{ color: gone ? C.muted : C.text }}>{name}</Text>
           {note ? <Text weight="medium" size={13} color={C.muted} style={{ marginTop: 2 }}>{note}</Text> : null}
         </Pressable>
+        {allergens && allergens.length > 0 ? <AllergenBadges allergens={allergens} size={14} gap={4} /> : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.sm, minHeight: 44 }}>
           {price != null ? (
             <Text weight="semibold" size={16} color={gone ? C.faint : C.brandDark} style={{ flexShrink: 1, textDecorationLine: gone ? 'line-through' : 'none' }}>

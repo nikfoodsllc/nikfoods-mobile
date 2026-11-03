@@ -8,6 +8,7 @@ import { Text, tap } from '@/components/ui';
 import { C, S, shadowSm } from '@/constants/theme';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useVegOnly } from '@/lib/vegOnly';
+import MenuFilters from '@/components/MenuFilters';
 
 /** One category's dishes (with its day chips and sub-categories). */
 export default function CategoryPage() {
@@ -28,6 +29,9 @@ export default function CategoryPage() {
           <Text weight="semibold" size={13} color={C.body} maxFontSizeMultiplier={1.1}>Veg</Text>
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
         </View>
+      </View>
+      <View style={{ paddingHorizontal: S.xl, paddingBottom: S.sm, backgroundColor: C.bg }}>
+        <MenuFilters />
       </View>
       <MenuBrowser categoryId={String(id)} />
     </SafeAreaView>

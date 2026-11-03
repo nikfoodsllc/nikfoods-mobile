@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useMenuCart } from '@/components/useMenuCart';
 import { Stepper, Text, VegDot, tap } from '@/components/ui';
+import AllergenBadges from '@/components/AllergenBadges';
 import { C, R, S, shadowSm } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
 import { isFoodCustomizable } from '@/lib/foodItemUtils';
@@ -11,6 +12,7 @@ import { chefsPickCells } from '@/lib/chefsPick';
 import { buildMenuSections } from '@/lib/homeMenu';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useVegOnly } from '@/lib/vegOnly';
+import { useSkipAllergens } from '@/lib/menuPrefs';
 import { useAutoAdvance } from '@/lib/useAutoAdvance';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -27,6 +29,7 @@ const AUTO_ADVANCE_MS = 5000;
 export default function ChefsPick() {
   const { categories, map, availableDates, loading } = useHomeMenu();
   const [vegOnly] = useVegOnly();
+  const [skipAllergens] = useSkipAllergens();
   const { cart } = useCart(); // quantities on the cards follow the cart
   const { dayOf, quantityOf, onAdd, onIncrement, decrement, openItem, sheets } = useMenuCart(availableDates);
   const scroller = useRef<ScrollView>(null);
@@ -37,13 +40,13 @@ export default function ChefsPick() {
   const focused = useIsFocused();
 
   const cells = useMemo(() => {
-    const sections = buildMenuSections(categories, map, '', vegOnly, availableDates).map((s) => ({ name: s.meta.name, category: s.category }));
+    const sections = buildMenuSections(categories, map, '', vegOnly, availableDates, skipAllergens).map((s) => ({ name: s.meta.name, category: s.category }));
     return chefsPickCells(sections, ({ dayGroup }) => {
       const opt = dayGroup ? dayOf(dayGroup.date) : undefined;
       return Boolean(dayGroup && opt && (opt.dayWisePastCutoff || opt.dayWiseCategoryEnabled === false));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories, map, availableDates, vegOnly]);
+  }, [categories, map, availableDates, vegOnly, skipAllergens]);
 
   // every 5 seconds the row moves on by one dish; at the end it goes back to the first
   const step = CARD_W + GAP;
@@ -103,6 +106,11 @@ export default function ChefsPick() {
                 <View pointerEvents="none" style={{ position: 'absolute', top: 6, left: 6 }}>
                   <VegDot veg={item.veg} size={16} />
                 </View>
+                {item.allergens && item.allergens.length > 0 ? (
+                  <View style={{ position: 'absolute', bottom: 6, left: 6, right: 6 }}>
+                    <AllergenBadges allergens={item.allergens} size={11} gap={3} />
+                  </View>
+                ) : null}
                 {inCart > 0 && custom && (
                   <View pointerEvents="none" style={{ position: 'absolute', top: -2, right: -2, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.white }}>
                     <Text weight="bold" size={12} color={C.ivory}>{inCart}</Text>

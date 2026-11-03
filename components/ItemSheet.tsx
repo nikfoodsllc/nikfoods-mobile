@@ -15,6 +15,9 @@ import ItemGallery from '@/components/ItemGallery';
 import Field from '@/components/Field';
 import { INSTRUCTIONS_MAX, cleanItemInstructions } from '@/lib/itemInstructions';
 import { stockLeftFor } from '@/lib/localStorageCart';
+import { getEcoPreselect } from '@/lib/menuPrefs';
+import AllergenBadges from '@/components/AllergenBadges';
+import { allergenInfo, cleanAllergens } from '@/lib/allergens';
 
 const SPICE_DOTS: Record<string, number> = {
   mild: 1, 'mild (kid friendly)': 1, normal: 2, medium: 3, 'medium spice': 3, 'semi-spicy': 4, 'semi spicy': 4, spicy: 4, 'super-spicy': 5, 'super spicy': 5, 'extra spicy': 5, hot: 5,
@@ -107,7 +110,8 @@ export default function ItemSheet({
     sectionY.current = {};
     setPortion(0);
     setSpice('');
-    setEco(false);
+    // with the Eco containers switch on, a dish that offers an eco container starts with it ticked (the customer can untick it)
+    setEco(getEcoPreselect() && Boolean(item.isEcoFriendlyContainer));
     setCombo(comboDefaults(item));
   }, [item]);
 
@@ -228,6 +232,12 @@ export default function ItemSheet({
         {item.portions?.length ? 'From ' : ''}${Number(item.portions?.length && item.portionPrices?.length ? item.portionPrices[0] : item.price).toFixed(2)}
       </Text>
       {!!item.description && <Text size={15} color={C.body} style={{ marginTop: S.md, lineHeight: 22 }}>{item.description}</Text>}
+      {cleanAllergens(item.allergens).length > 0 && (
+        <View style={{ marginTop: S.md, gap: 8 }}>
+          <AllergenBadges allergens={item.allergens} size={20} gap={6} />
+          <Text weight="semibold" size={14}>Contains: {cleanAllergens(item.allergens).map((k) => allergenInfo(k)?.label ?? k).join(', ')}</Text>
+        </View>
+      )}
 
       {!!item.portions?.length && !!item.portionPrices?.length && (
         <View style={{ marginTop: S.xl }}>

@@ -11,6 +11,8 @@ export interface FoodItem {
   images?: string[];
   category: string;
   veg: boolean;
+  /** allergens the dish contains (keys of lib/allergens.ts); missing or empty = none */
+  allergens?: string[];
   available: boolean;
   /** Chef's Pick: marked in the admin; shown in the Chef's Pick row on Home */
   chefsPick?: boolean;
