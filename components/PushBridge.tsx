@@ -6,7 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/contexts/AuthContext';
 import { openStore } from '@/lib/appUpdate';
 import { useApiClient } from '@/hooks/useApiClient';
-import { askForPush, markAsked, pushState, registerPush, targetForNotification, wasAskedBefore, type NotificationTarget } from '@/lib/push';
+import { askForPush, markAsked, pushState, registerPush, reportOpened, targetForNotification, wasAskedBefore, type NotificationTarget } from '@/lib/push';
 
 /**
  * Lives inside the app (renders nothing): keeps this phone registered for the signed-in customer (when they allowed
@@ -67,11 +67,17 @@ export default function PushBridge() {
   }, [user?.id]);
 
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => openRef.current(targetForNotification(response.notification.request.content.data)));
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      void reportOpened(authenticatedFetch, response);
+      openRef.current(targetForNotification(response.notification.request.content.data));
+    });
     if (!handledColdStart.current) {
       handledColdStart.current = true;
       void Notifications.getLastNotificationResponseAsync().then((response) => {
-        if (response) openRef.current(targetForNotification(response.notification.request.content.data));
+        if (response) {
+          void reportOpened(authenticatedFetch, response);
+          openRef.current(targetForNotification(response.notification.request.content.data));
+        }
       });
     }
     return () => sub.remove();

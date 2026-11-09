@@ -120,6 +120,27 @@ export async function unregisterPush(authenticatedFetch: Fetcher): Promise<void>
 
 export type NotificationTarget = { kind: 'order'; id: string } | { kind: 'pay'; url: string } | { kind: 'cart' } | { kind: 'menu' } | { kind: 'update' };
 
+const OPENED_KEY = 'push_last_opened';
+
+/**
+ * Tells the site this customer tapped a notification (the site counts who opened what). Each notification is reported once: the
+ * tapped notification's id is remembered, so starting the app again does not report the same tap twice. Never throws.
+ */
+export async function reportOpened(authenticatedFetch: Fetcher, response: Notifications.NotificationResponse): Promise<void> {
+  try {
+    const pushId = (response.notification.request.content.data as { pushId?: unknown } | undefined)?.pushId;
+    if (typeof pushId !== 'string' || !/^[0-9a-f]{24}$/.test(pushId)) return;
+    // signed out: nothing to count (and an unauthorised answer would log the customer out)
+    if (!localStorage.getItem('accessToken')) return;
+    const key = `${response.notification.request.identifier}:${response.notification.date}`;
+    if (localStorage.getItem(OPENED_KEY) === key) return;
+    localStorage.setItem(OPENED_KEY, key);
+    await authenticatedFetch('/api/push/opened', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pushId }) });
+  } catch {
+    // counting a tap must never get in the way of opening what was tapped
+  }
+}
+
 /** What to open when a notification is tapped, from the data the site sent with it. Only our own site's pay links are opened. */
 export function targetForNotification(data: unknown): NotificationTarget | null {
   if (!data || typeof data !== 'object') return null;
