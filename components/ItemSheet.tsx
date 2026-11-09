@@ -70,6 +70,34 @@ function Row({ selected, multi, onPress, children, right, disabled }: { selected
   );
 }
 
+/** One wrapping row of small pills (used for the spice choice inside a combo, so the form stays short) */
+function SpicePills({ levels, selected, onPick }: { levels: string[]; selected: string; onPick: (level: string) => void }) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm }}>
+      {levels.map((level) => {
+        const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
+        const on = selected === level;
+        return (
+          <Pressable
+            key={level}
+            onPress={() => { tap(); onPick(level); }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: S.md, borderRadius: 20, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white }}
+          >
+            <Text weight={on ? 'semibold' : 'medium'} size={14}>{formatSpiceLevel(level)}</Text>
+            {dots > 0 && (
+              <View style={{ flexDirection: 'row', gap: 3 }}>
+                {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: DOT_COLORS[i] }} />)}
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function ItemSheet({
   item,
   onClose,
@@ -271,13 +299,6 @@ export default function ItemSheet({
         </View>
       )}
 
-      {item.isEcoFriendlyContainer && (
-        <View style={{ marginTop: S.xl }}>
-          <Row selected={eco} multi onPress={() => setEco((v) => !v)} right={item.ecoContainerCharge ? <Text weight="semibold" size={15} color={C.brandDark}>+${item.ecoContainerCharge.toFixed(2)}</Text> : undefined}>
-            <Text weight="medium" size={15}>Eco-friendly container</Text>
-          </Row>
-        </View>
-      )}
 
       {item.hasCombo && !!item.sections?.length && (
         <View style={{ marginTop: S.xl }} onLayout={(e) => { sectionY.current.__combo = e.nativeEvent.layout.y; }}>
@@ -313,18 +334,7 @@ export default function ItemSheet({
                       <Text weight="semibold" size={14}>{`${p.option.item?.name ?? 'Item'} spice`}</Text>
                       <Text size={13} weight={showMissing && missingItemSpice?.option._id === p.option._id ? 'bold' : 'regular'} color={C.red}>{showMissing && missingItemSpice?.option._id === p.option._id ? 'Pick one' : 'Required'}</Text>
                     </View>
-                    {p.levels.map((level) => {
-                      const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
-                      return (
-                        <Row key={level} selected={p.level === level} multi={false} onPress={() => setCombo((prev) => withOptionSpice(prev, p.section._id ?? '', p.option._id ?? '', level))} right={
-                          <View style={{ flexDirection: 'row', gap: 3 }}>
-                            {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT_COLORS[i] }} />)}
-                          </View>
-                        }>
-                          <Text weight="medium" size={15}>{formatSpiceLevel(level)}</Text>
-                        </Row>
-                      );
-                    })}
+                    <SpicePills levels={p.levels} selected={p.level ?? ''} onPick={(level) => setCombo((prev) => withOptionSpice(prev, p.section._id ?? '', p.option._id ?? '', level))} />
                   </View>
                 ))}
                 {item.hasSpiceLevel && sectionOwnsSpice(section) && chosen.length > 0 && (
@@ -333,18 +343,7 @@ export default function ItemSheet({
                       <Text weight="semibold" size={14}>Spice level</Text>
                       <Text size={13} weight={showMissing && missingSpiceSection?._id === section._id ? 'bold' : 'regular'} color={C.red}>{showMissing && missingSpiceSection?._id === section._id ? 'Pick one' : 'Required'}</Text>
                     </View>
-                    {spiceLevels.map((level) => {
-                      const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
-                      return (
-                        <Row key={level} selected={getSectionSpice(combo, section._id) === level} multi={false} onPress={() => setCombo((prev) => withSectionSpice(prev, section._id, level))} right={
-                          <View style={{ flexDirection: 'row', gap: 3 }}>
-                            {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT_COLORS[i] }} />)}
-                          </View>
-                        }>
-                          <Text weight="medium" size={15}>{formatSpiceLevel(level)}</Text>
-                        </Row>
-                      );
-                    })}
+                    <SpicePills levels={spiceLevels} selected={getSectionSpice(combo, section._id) ?? ''} onPick={(level) => setCombo((prev) => withSectionSpice(prev, section._id, level))} />
                   </View>
                 )}
               </View>
@@ -363,6 +362,13 @@ export default function ItemSheet({
             accessibilityLabel="Special instructions"
           />
           <Text size={12} color={C.muted} style={{ marginTop: 4, textAlign: 'right' }}>{`${instructions.length}/${INSTRUCTIONS_MAX}`}</Text>
+        </View>
+      )}
+      {item.isEcoFriendlyContainer && (
+        <View style={{ marginTop: S.xl }}>
+          <Row selected={eco} multi onPress={() => setEco((v) => !v)} right={item.ecoContainerCharge ? <Text weight="semibold" size={15} color={C.brandDark}>+${item.ecoContainerCharge.toFixed(2)}</Text> : undefined}>
+            <Text weight="medium" size={15}>Eco-friendly container</Text>
+          </Row>
         </View>
       )}
       </ScrollView>
