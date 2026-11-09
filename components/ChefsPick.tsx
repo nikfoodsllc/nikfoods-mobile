@@ -102,15 +102,15 @@ export default function ChefsPick() {
               <Pressable onPress={() => openItem(item, dayGroup)} accessibilityRole="button" accessibilityLabel={`${item.name}, details`}>
                 <View style={{ height: 118, borderRadius: 20, overflow: 'hidden', backgroundColor: C.surface }}>
                   <Image source={item.url ? { uri: item.url } : undefined} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
-                </View>
-                <View pointerEvents="none" style={{ position: 'absolute', top: 6, left: 6 }}>
-                  <VegDot veg={item.veg} size={16} />
-                </View>
-                {item.allergens && item.allergens.length > 0 ? (
-                  <View style={{ position: 'absolute', bottom: 6, left: 6, right: 6 }}>
-                    <AllergenBadges allergens={item.allergens} size={11} gap={3} />
+                  <View pointerEvents="none" style={{ position: 'absolute', top: 6, left: 6 }}>
+                    <VegDot veg={item.veg} size={16} />
                   </View>
-                ) : null}
+                  {item.allergens && item.allergens.length > 0 ? (
+                    <View pointerEvents="none" style={{ position: 'absolute', bottom: 6, left: 6, right: 6 }}>
+                      <AllergenBadges allergens={item.allergens} size={11} gap={3} />
+                    </View>
+                  ) : null}
+                </View>
                 {inCart > 0 && custom && (
                   <View pointerEvents="none" style={{ position: 'absolute', top: -2, right: -2, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.white }}>
                     <Text weight="bold" size={12} color={C.ivory}>{inCart}</Text>
