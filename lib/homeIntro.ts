@@ -64,7 +64,9 @@ export interface GreetingPart {
 }
 
 /** What Home draws, in order: the admin's text split around the first name (name in ink, the rest gold), or the usual two lines. */
-export function greeting(intro: string, firstName: string): { custom: GreetingPart[] } | { name: string; question: string } {
+export function greeting(rawIntro: string, firstName: string): { custom: GreetingPart[] } | { name: string; question: string } {
+  // a typed backslash-n (or a real new line) in the admin's text is just a space: the heading wraps by itself
+  const intro = rawIntro.replace(/\\n/g, ' ').replace(/\s*\n\s*/g, ' ').replace(/ {2,}/g, ' ');
   const name = firstName.trim();
   // without a name the placeholder goes, and the comma that led up to it
   const text = name ? intro : intro.replace(/,?\s*\{name\}/gi, '').replace(/^[\s,]+/, '');

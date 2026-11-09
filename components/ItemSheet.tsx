@@ -361,7 +361,7 @@ export default function ItemSheet({
             returnKeyType="done"
             accessibilityLabel="Special instructions"
           />
-          <Text size={12} color={C.muted} style={{ marginTop: 4, textAlign: 'right' }}>{`${instructions.length}/${INSTRUCTIONS_MAX}`}</Text>
+          <Text size={12} color={C.muted} style={{ marginTop: -(S.lg - 4), textAlign: 'right' }}>{`${instructions.length}/${INSTRUCTIONS_MAX}`}</Text>
         </View>
       )}
       {item.isEcoFriendlyContainer && (
