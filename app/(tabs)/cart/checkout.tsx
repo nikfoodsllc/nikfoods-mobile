@@ -370,7 +370,11 @@ export default function Checkout() {
       }
       const res = await presentPaymentSheet();
       if (res.error) {
-        if (res.error.code === 'Canceled') return;
+        if (res.error.code === 'Canceled') {
+          // not an error: the customer closed the payment screen. Tell the server so the unpaid order is explained in the admin.
+          reportPaymentError({ stage: 'dismissed', message: 'Closed the payment screen without paying', orderId: id, paymentIntentId: paymentIntentIdFromClientSecret(secret) });
+          return;
+        }
         reportPaymentError({ stage: 'confirm_payment', message: res.error.message, code: res.error.code, orderId: id, paymentIntentId: paymentIntentIdFromClientSecret(secret) });
         setBanner(res.error.message);
         return;
