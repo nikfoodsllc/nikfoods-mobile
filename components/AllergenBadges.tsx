@@ -67,7 +67,7 @@ function Seeds({ k, size }: { k: 'soy' | 'sesame' | 'mustard'; size: number }) {
   );
 }
 
-/** One allergen as a round badge. Tap it to read what it is ("Contains milk (dairy)"). */
+/** One allergen as a round badge. Tap it to read what it is ("Contains dairy"). */
 export function AllergenBadge({ allergen, size = 18 }: { allergen: AllergenKey; size?: number }) {
   const toast = useToast();
   const info = allergenInfo(allergen);
