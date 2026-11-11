@@ -161,6 +161,8 @@ export default function Checkout() {
   const credited = useCredit && creditBalance > 0 && creditApplied > 0 ? (orderId && serverCredit && serverCredit.platformFee !== undefined && serverCredit.tax !== undefined && serverCredit.total !== undefined ? { platformFee: serverCredit.platformFee, tax: serverCredit.tax, total: serverCredit.total } : localCredit ? { platformFee: localCredit.platformFee, tax: localCredit.tax, total: localCredit.total } : null) : null;
   const covered = useCredit && creditBalance > 0 && (serverCredit ? serverCredit.covered : Boolean(localCredit && localCredit.cardCents === 0 && localCredit.creditCents > 0));
   const creditLocked = Boolean(orderId);
+  // an order that holds store credit keeps its amounts, so its tip cannot change either
+  const tipLocked = Boolean(orderId) && creditApplied > 0;
 
   const totals = cart ? cartTotalsWithTip(cart, tipPct, credited, customTip) : null;
   const canPay = Boolean(cart?.canCheckout && isCompleteAddress(cart?.selectedAddress));
@@ -191,6 +193,9 @@ export default function Checkout() {
     [refreshCart]
   );
 
+  // the newest payment secret (the state may not have updated yet when Pay is tapped right after a change)
+  const secretRef = useRef<string | null>(null);
+
   // ---- payment session (same endpoint as the website's checkout) ----
   const prepare = useCallback(async (): Promise<boolean> => {
     if (!cart || cart.days.length === 0) return false;
@@ -212,6 +217,7 @@ export default function Checkout() {
       if (data.data.coveredByCredit === true) {
         setIntentId(null);
         setClientSecret(null);
+        secretRef.current = null;
         return true;
       }
       if (!data.data.clientSecret || !data.data.paymentIntentId) {
@@ -220,6 +226,7 @@ export default function Checkout() {
       }
       setIntentId(data.data.paymentIntentId);
       setClientSecret(data.data.clientSecret);
+      secretRef.current = data.data.clientSecret;
       return true;
     } catch (e) {
       setBanner(e instanceof Error ? e.message : 'Failed to load payment options.');
@@ -234,11 +241,14 @@ export default function Checkout() {
 
   // open the payment session as soon as the cart can be ordered, and again when the amount changes
   const amountKey = `${tipPct}-${customTip ?? ''}-${cart?.subtotal}-${cart?.platformFee}-${cart?.deliveryFee}-${cart?.tax}-${useCredit && creditBalance > 0}-${creditBalance}`;
+  // (also once the order exists: a customer who closed the payment screen and then changed the tip must pay the new total, so the server
+  // changes the order and the payment too. Only an amount change triggers it, not the order being created.)
   useEffect(() => {
-    if (!canPay || !creditReady || orderId) return;
+    if (!canPay || !creditReady) return;
     const t = setTimeout(() => void prepareRef.current(), 350);
     return () => clearTimeout(t);
-  }, [amountKey, canPay, creditReady, orderId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amountKey, canPay, creditReady]);
 
   const validate = () => {
     const e: typeof errors = {};
@@ -327,6 +337,13 @@ export default function Checkout() {
       let id = orderId;
       let secret = clientSecret;
       let creditOnly = false;
+      // The order was already created by an earlier tap (the payment screen was closed or the card failed). The customer may have changed the
+      // tip since: make the server bring the order and the payment up to what the screen shows, and wait for it, before the sheet opens.
+      if (id) {
+        const synced = await prepare();
+        if (!synced) return;
+        secret = secretRef.current ?? secret;
+      }
       if (!id) {
         const created = await createOrder();
         if (!created) return;
@@ -501,7 +518,7 @@ export default function Checkout() {
               {TIPS.map((p) => {
                 const on = customTip === null && tipPct === p;
                 return (
-                  <Pressable key={p} onPress={() => { tap(); setTipPct(p); setTipText(''); }} accessibilityRole="button" accessibilityLabel={p === 0 ? 'No tip' : `${p} percent tip`} style={{ flex: 1, height: 58, borderRadius: R.md, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, alignItems: 'center', justifyContent: 'center' }}>
+                  <Pressable key={p} disabled={tipLocked} onPress={() => { tap(); setTipPct(p); setTipText(''); }} accessibilityRole="button" accessibilityLabel={p === 0 ? 'No tip' : `${p} percent tip`} style={{ flex: 1, height: 58, borderRadius: R.md, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, alignItems: 'center', justifyContent: 'center' }}>
                     <Text weight="bold" size={16}>{p === 0 ? 'None' : `${p}%`}</Text>
                     {p > 0 && <Text size={12} color={C.muted}>${((cart.subtotal * p) / 100).toFixed(2)}</Text>}
                   </Pressable>
@@ -510,9 +527,10 @@ export default function Checkout() {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.xs, marginTop: S.sm, height: 48, borderRadius: R.md, borderWidth: 1.5, borderColor: tipText !== '' && customTip === null ? C.red : customTip !== null ? C.brand : C.line, backgroundColor: C.white, paddingHorizontal: S.md }}>
               <Text size={16} color={C.muted}>$</Text>
-              <TextInput value={tipText} onChangeText={(t) => setTipText(cleanTipText(t))} placeholder="Other amount" placeholderTextColor={C.faint} keyboardType="decimal-pad" maxLength={7} style={{ flex: 1, fontFamily: FONT.medium, fontSize: 16, color: C.text }} accessibilityLabel="Tip amount in dollars" />
+              <TextInput value={tipText} editable={!tipLocked} onChangeText={(t) => setTipText(cleanTipText(t))} placeholder="Other amount" placeholderTextColor={C.faint} keyboardType="decimal-pad" maxLength={7} style={{ flex: 1, fontFamily: FONT.medium, fontSize: 16, color: C.text }} accessibilityLabel="Tip amount in dollars" />
             </View>
             {tipText !== '' && customTip === null && <Text size={12} color={C.red} style={{ marginTop: S.xs }}>Up to ${MAX_TIP_AMOUNT}</Text>}
+            {tipLocked && <Text size={12} color={C.muted} style={{ marginTop: S.xs }}>The tip is set once payment has started with store credit.</Text>}
           </Card>
 
           {creditBalance > 0 && (
