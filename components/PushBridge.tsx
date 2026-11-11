@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/contexts/AuthContext';
+import { openStore } from '@/lib/appUpdate';
 import { useApiClient } from '@/hooks/useApiClient';
-import { askForPush, markAsked, pushState, registerPush, targetForNotification, wasAskedBefore, type NotificationTarget } from '@/lib/push';
+import { askForPush, markAsked, pushState, registerPush, reportOpened, targetForNotification, wasAskedBefore, type NotificationTarget } from '@/lib/push';
 
 /**
  * Lives inside the app (renders nothing): keeps this phone registered for the signed-in customer (when they allowed
@@ -29,6 +30,7 @@ export default function PushBridge() {
     }
     else if (target.kind === 'pay') void WebBrowser.openBrowserAsync(target.url);
     else if (target.kind === 'cart') router.navigate('/cart');
+    else if (target.kind === 'update') openStore();
     else router.navigate('/');
   };
   const openRef = useRef(open);
@@ -45,16 +47,37 @@ export default function PushBridge() {
 
   // a signed-in customer who allowed notifications: (re)register this phone (the token can change)
   useEffect(() => {
-    if (user) void registerPush(authenticatedFetch);
+    if (!user) return;
+    void registerPush(authenticatedFetch);
+    // first sign-in: ask once (our own question first, so iPhone's one-time box is only used when they say yes)
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (cancelled || wasAskedBefore() || (await pushState()) !== 'undetermined') return;
+      markAsked();
+      Alert.alert('Get order and menu updates?', 'We will tell you when your order is on its way and delivered, and when the new menu is out.', [
+        { text: 'Not now', style: 'cancel', onPress: () => void registerPush(authenticatedFetch) },
+        { text: 'Turn on', onPress: async () => {
+          const state = await askForPush();
+          if (state !== 'unavailable') void registerPush(authenticatedFetch);
+        } },
+      ]);
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => openRef.current(targetForNotification(response.notification.request.content.data)));
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      void reportOpened(authenticatedFetch, response);
+      openRef.current(targetForNotification(response.notification.request.content.data));
+    });
     if (!handledColdStart.current) {
       handledColdStart.current = true;
       void Notifications.getLastNotificationResponseAsync().then((response) => {
-        if (response) openRef.current(targetForNotification(response.notification.request.content.data));
+        if (response) {
+          void reportOpened(authenticatedFetch, response);
+          openRef.current(targetForNotification(response.notification.request.content.data));
+        }
       });
     }
     return () => sub.remove();

@@ -4,6 +4,8 @@ export type PaymentErrorStage =
   | 'submit_form'
   | 'confirm_payment'
   | 'confirm_incomplete'
+  /** the customer closed the payment screen without paying (not an error: the admin shows it as a note on the order) */
+  | 'dismissed'
   | 'unexpected';
 
 export interface PaymentErrorReport {

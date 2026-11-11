@@ -52,6 +52,7 @@ export function ItemRow({ item }: { item: OrderDayItem }) {
       <View style={{ flex: 1 }}>
         <Text weight="medium" size={15}>{item.quantity} x {item.food.name}</Text>
         {lines.map((l) => <Text key={l} size={12} color={C.muted} style={{ marginTop: 2 }}>{l}</Text>)}
+        {!!item.notes && <Text size={12} color={C.muted} style={{ marginTop: 2, fontStyle: 'italic' }}>Instructions: {item.notes}</Text>}
       </View>
       <Text weight="semibold" size={15}>${(item.price * item.quantity).toFixed(2)}</Text>
     </View>

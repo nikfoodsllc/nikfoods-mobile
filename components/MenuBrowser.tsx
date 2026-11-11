@@ -21,6 +21,7 @@ import {
 import { searchMenu } from '@/lib/menuSearch';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useVegOnly } from '@/lib/vegOnly';
+import { useSkipAllergens } from '@/lib/menuPrefs';
 import { FoodItem } from '@/types/food';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 
@@ -44,6 +45,7 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
   const { cart } = useCart();
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
   const [vegOnly] = useVegOnly();
+  const [skipAllergens] = useSkipAllergens();
   const selectedCategory = categoryId;
   const searching = query.trim().length > 0;
   const [dateByCat, setDateByCat] = useState<Record<string, string>>({});
@@ -55,8 +57,8 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
   // ---- shaping the menu (same rules as the website) ----
   const sections = useMemo(
     // searching looks through the whole menu, whichever category is open
-    () => buildMenuSections(categories, map, searching ? '' : selectedCategory, vegOnly, availableDates),
-    [categories, map, selectedCategory, vegOnly, availableDates, searching]
+    () => buildMenuSections(categories, map, searching ? '' : selectedCategory, vegOnly, availableDates, skipAllergens),
+    [categories, map, selectedCategory, vegOnly, availableDates, searching, skipAllergens]
   );
 
   const rows = useMemo(() => {
@@ -336,7 +338,9 @@ export default function MenuBrowser({ categoryId = '', query = '', header = null
                   price={price}
                   starting={Boolean(item.portions?.length)}
                   veg={item.veg}
+                  allergens={item.allergens}
                   available={item.available}
+                  soldOut={item.soldOut}
                   closed={closed}
                   customizable={custom}
                   quantity={custom ? 0 : inCart}

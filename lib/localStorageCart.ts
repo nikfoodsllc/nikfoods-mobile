@@ -3,6 +3,7 @@ import { DayType } from '@/types/cart';
 import { LocalCart, LocalCartItem, LocalCartDay, CartCustomizations } from '@/types/localCart';
 import { generateAvailableDatesFromAPI } from './dayAvailabilityClient';
 import { getPSTDateString } from './timezone';
+import { formatAmount, lineAmounts, perUnitAmount, unitsThatFit, type StockLimitDetail, type StockLineInput } from './stockRules';
 
 const CART_STORAGE_KEY = 'nikfoods_guest_cart';
 /** where the cross-device sync remembers what it last matched (cleared together with the cart, see cartSync.ts) */
@@ -42,9 +43,9 @@ function customizationSignature(foodItem: FoodItem, c: CartCustomizations): stri
   const portion = c.selectedPortion || '';
   const spice = foodItem.hasSpiceLevel ? String(c.selectedSpiceLevel ?? '') : '';
   const eco = c.isEcoFriendlyContainer ? '1' : '0';
-  const notes = c.notes || '';
+  // special instructions are NOT part of the signature: one item has one instruction per day, shared by all its lines
   const combo = normalizeComboSelections(c.comboSelections as Record<string, string[] | string> | undefined);
-  return JSON.stringify({ portion, spice, eco, notes, combo });
+  return JSON.stringify({ portion, spice, eco, combo });
 }
 
 function signatureFromLine(foodItem: FoodItem, line: LocalCartItem): string {
@@ -237,6 +238,19 @@ export function getFirstLineForFoodOnDay(day: DayType, foodItemId: string): Loca
 }
 
 /**
+ * One item has ONE special instruction per delivery day, however many lines or units it has (the kitchen reads one instruction per
+ * item per day). New text replaces the old one on every line of that item that day; adding again with an empty box keeps it.
+ */
+function applyItemDayInstruction(cart: LocalCart, day: DayType, foodItemId: string, incoming?: string): void {
+  const lines = Object.values(cart.days[day]?.items ?? {}).filter((li) => li.foodItemId === foodItemId);
+  const note = incoming?.trim() || lines.find((li) => li.notes)?.notes;
+  for (const li of lines) {
+    if (note) li.notes = note;
+    else delete li.notes;
+  }
+}
+
+/**
  * Add or merge line: same food + same customization signature => increment quantity; else new line.
  */
 export function addItem(
@@ -247,6 +261,14 @@ export function addItem(
   customizations: CartCustomizations = {}
 ): LocalCart {
   const cart = getCart();
+
+  // an item with an order limit cannot go above what is left (units already in the cart count)
+  const left = stockLeftFor(foodItem, customizations.selectedPortion);
+  if (left !== null && quantity > left) {
+    tellStockLimit(foodItem, left, customizations.selectedPortion);
+    quantity = left;
+    if (quantity <= 0) return cart;
+  }
 
   if (!cart.days[day]) {
     cart.days[day] = {
@@ -265,6 +287,7 @@ export function addItem(
     existing.quantity += quantity;
     existing.totalPrice = existing.unitPrice * existing.quantity;
     existing.foodItem = foodItem;
+    applyItemDayInstruction(cart, day, foodItem._id, customizations.notes);
     saveCart(cart);
     return cart;
   }
@@ -291,8 +314,56 @@ export function addItem(
     addedAt: new Date().toISOString(),
   };
 
+  applyItemDayInstruction(cart, day, foodItem._id, customizations.notes);
   saveCart(cart);
   return cart;
+}
+
+/** What one food item already uses in the cart (on every day and line, also inside combos), in the base of its limit: units, or ounces. */
+export function amountInCart(foodItemId: string, base: 'units' | 'oz'): number {
+  const cart = getCart();
+  let total = 0;
+  for (const day of Object.values(cart.days)) {
+    for (const line of Object.values(day.items)) {
+      const a = lineAmounts(line as unknown as StockLineInput & { selectedPortion?: unknown }).get(foodItemId);
+      if (a) total += base === 'units' ? a.units : a.ounces;
+    }
+  }
+  return total;
+}
+
+/**
+ * How many more units of this serving of an item with an order limit can still go in the cart: what is left (the menu carries it as
+ * `stockRemaining`) minus what is already in the cart, divided by what one unit uses (1, or the ounces of the size). Null when the
+ * item has no limit, or when its size has no weight (the server checks those at checkout).
+ */
+export function stockLeftFor(foodItem: FoodItem, portion?: string): number | null {
+  if (typeof foodItem.stockRemaining !== 'number') return null;
+  const base = foodItem.stockBase === 'oz' ? 'oz' : 'units';
+  const room = Math.max(0, foodItem.stockRemaining - amountInCart(foodItem._id, base));
+  const per = perUnitAmount(portion, base === 'oz' ? 'oz' : 'units');
+  const fit = unitsThatFit(room, per);
+  return Number.isFinite(fit) ? fit : null;
+}
+
+let stockLimitListener: ((detail: StockLimitDetail) => void) | null = null;
+
+/** The app shows "Only N left" through this (the website listens to a window event instead). Returns the way to stop listening. */
+export function onStockLimit(listener: (detail: StockLimitDetail) => void): () => void {
+  stockLimitListener = listener;
+  return () => {
+    if (stockLimitListener === listener) stockLimitListener = null;
+  };
+}
+
+/** Tells the customer what is left, in words ("2", "8 oz"). */
+function tellStockLimit(foodItem: FoodItem, left: number, portion?: string): void {
+  if (!stockLimitListener) return;
+  const base = foodItem.stockBase === 'oz' ? 'oz' : 'units';
+  const room = Math.max(0, (foodItem.stockRemaining ?? 0) - amountInCart(foodItem._id, base));
+  const leftText = base === 'oz' ? formatAmount(room, 'oz') : String(left);
+  stockLimitListener({ name: foodItem.name, left: left, leftText });
+  void portion;
 }
 
 export function updateQuantity(day: DayType, lineId: string, newQuantity: number): LocalCart {
@@ -308,6 +379,15 @@ export function updateQuantity(day: DayType, lineId: string, newQuantity: number
   }
 
   const item = cart.days[day].items[lineId];
+  if (newQuantity > item.quantity) {
+    // an item with an order limit cannot go above what is left
+    const left = stockLeftFor(item.foodItem, item.selectedPortion);
+    if (left !== null && newQuantity - item.quantity > left) {
+      tellStockLimit(item.foodItem, left, item.selectedPortion);
+      newQuantity = item.quantity + left;
+      if (newQuantity === item.quantity) return cart;
+    }
+  }
   item.quantity = newQuantity;
   item.totalPrice = item.unitPrice * newQuantity;
 
@@ -445,6 +525,31 @@ export function removeClosedLines(closed: Array<{ date: string; foodItemId?: str
     for (const [lineId, line] of Object.entries(day.items)) {
       const hit = closed.some((c) => c.date === date && (c.foodItemId === undefined || c.foodItemId === line.foodItemId));
       if (hit) {
+        delete day.items[lineId];
+        removed += 1;
+      }
+    }
+    if (Object.keys(day.items).length === 0) delete cart.days[dayKey];
+  }
+  if (removed > 0) saveCart(cart);
+  const linesLeft = Object.values(cart.days).reduce((sum, d) => sum + Object.keys(d.items).length, 0);
+  return { removed, linesLeft, cart };
+}
+
+/**
+ * The server refused the order because these items sold out (or have less left than the cart asks for). Removes every line that uses
+ * one of them (a combo line too, when one of its parts is the item). A day left without items is removed as well.
+ */
+export function removeSoldOutLines(foodItemIds: string[]): { removed: number; linesLeft: number; cart: LocalCart } {
+  const cart = getCart();
+  const ids = new Set(foodItemIds);
+  let removed = 0;
+  for (const dayKey of Object.keys(cart.days) as DayType[]) {
+    const day = cart.days[dayKey];
+    if (!day) continue;
+    for (const [lineId, line] of Object.entries(day.items)) {
+      const uses = [...lineAmounts(line as unknown as StockLineInput & { selectedPortion?: unknown }).keys()].some((id) => ids.has(id));
+      if (uses) {
         delete day.items[lineId];
         removed += 1;
       }

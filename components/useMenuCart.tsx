@@ -3,6 +3,7 @@ import DaySheet, { DaySelection } from '@/components/DaySheet';
 import ItemSheet from '@/components/ItemSheet';
 import { useToast } from '@/components/Toast';
 import { tap } from '@/components/ui';
+import { ecoPreselected, getEcoPreselect } from '@/lib/menuPrefs';
 import { useCart } from '@/contexts/CartContext';
 import * as localCart from '@/lib/localStorageCart';
 import { isFoodCustomizable } from '@/lib/foodItemUtils';
@@ -45,7 +46,9 @@ export function useMenuCart(availableDates: DayOption[]) {
     }
     const { __dayGroup, ...clean } = item as FoodItem & { __dayGroup?: unknown };
     void __dayGroup;
-    localCart.addItem(opt.day as DayType, dayGroup.date, clean as FoodItem, quantity, customizations);
+    // a quick add (no options chosen) gets the eco container when that switch is on; the item sheet sends its own choice
+    const withEco = Object.keys(customizations).length === 0 ? ecoPreselected(item, getEcoPreselect()) : customizations;
+    localCart.addItem(opt.day as DayType, dayGroup.date, clean as FoodItem, quantity, withEco);
     void after();
     return true;
   };
@@ -59,7 +62,7 @@ export function useMenuCart(availableDates: DayOption[]) {
     const day = opt.day as DayType;
     const line = localCart.getFirstLineForFoodOnDay(day, item._id);
     if (line) localCart.updateQuantity(day, line.lineId, line.quantity + 1);
-    else localCart.addItem(day, dayGroup.date, item, 1, {});
+    else localCart.addItem(day, dayGroup.date, item, 1, ecoPreselected(item, getEcoPreselect()));
     void after();
   };
 
@@ -92,7 +95,7 @@ export function useMenuCart(availableDates: DayOption[]) {
       if (addToDay(item, dayGroup)) tap();
       return;
     }
-    setDaySheet({ item });
+    setDaySheet({ item, customizations: ecoPreselected(item, getEcoPreselect()) });
   };
 
   const onIncrement = (item: FoodItem, dayGroup?: DayGroup) => {
@@ -100,7 +103,7 @@ export function useMenuCart(availableDates: DayOption[]) {
       incrementOnDay(item, dayGroup);
       return;
     }
-    setDaySheet({ item });
+    setDaySheet({ item, customizations: ecoPreselected(item, getEcoPreselect()) });
   };
 
   const onSheetAdd = (item: FoodItem, customizations: CartCustomizations, quantity: number) => {

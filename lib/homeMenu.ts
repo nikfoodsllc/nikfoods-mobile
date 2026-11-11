@@ -2,6 +2,7 @@
  * The website's menu shaping rules (copied from livesite src/app/page.tsx; keep in step).
  * Pure functions: categories with sub-categories, day groups, veg filter, which items are allowed on a date.
  */
+import { containsSkippedAllergen } from '@/lib/allergens';
 import { FoodItem } from '@/types/food';
 import { DayOption } from '@/lib/dayAvailabilityClient';
 import { getPSTWeekday, createPSTDate } from '@/lib/timezone';
@@ -198,18 +199,20 @@ export function flattenCategoriesWithSubs(categories: CategoryDisplay[]): Catego
 export function applyCategoryDisplayFilters(
   category: CategoryDisplay,
   vegOnly: boolean,
-  availableDates: DayOption[]
+  availableDates: DayOption[],
+  skipAllergens: readonly string[] = []
 ): CategoryDisplay {
   const subCategories = category.subCategories?.map((sub) =>
-    applyCategoryDisplayFilters(sub, vegOnly, availableDates)
+    applyCategoryDisplayFilters(sub, vegOnly, availableDates, skipAllergens)
   );
 
   const listingType = category.listingType || 'flat';
 
   if (listingType === 'flat') {
-    const filteredFoodItems = vegOnly
+    const filteredFoodItems = (vegOnly
       ? (category.foodItems || []).filter((item) => item.veg !== false)
-      : (category.foodItems || []);
+      : (category.foodItems || [])
+    ).filter((item) => !containsSkippedAllergen(item.allergens, skipAllergens));
 
     return {
       ...category,
@@ -224,9 +227,10 @@ export function applyCategoryDisplayFilters(
   const dayGroups = Object.entries(dayWiseItems)
     .filter(([, items]) => items && items.length > 0)
     .map(([dateString, items]) => {
-      const filteredItems = vegOnly
+      const filteredItems = (vegOnly
         ? items.filter((item) => item.veg !== false)
-        : items.slice();
+        : items.slice()
+      ).filter((item) => !containsSkippedAllergen(item.allergens, skipAllergens));
       const forDay = filterFoodItemsForDate(filteredItems, dateString, availableDates);
 
       const dateOption = availableDates.find((d) => d.date === dateString);
@@ -361,7 +365,8 @@ export function buildMenuSections(
   map: Map<string, CategoryDisplay>,
   onlyCategory: string,
   vegOnly: boolean,
-  availableDates: DayOption[]
+  availableDates: DayOption[],
+  skipAllergens: readonly string[] = []
 ): Array<{ meta: CategoryListItem; category: CategoryDisplay | null }> {
   const parents = onlyCategory ? categories.filter((c) => c._id === onlyCategory) : categories;
   return parents.map((meta) => {
@@ -378,7 +383,7 @@ export function buildMenuSections(
         if (subs.length > 0) merged = { ...merged, subCategories: subs };
       }
     }
-    return { meta, category: merged ? applyCategoryDisplayFilters(merged, vegOnly, availableDates) : null };
+    return { meta, category: merged ? applyCategoryDisplayFilters(merged, vegOnly, availableDates, skipAllergens) : null };
   });
 }
 

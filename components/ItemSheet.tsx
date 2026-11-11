@@ -12,6 +12,12 @@ import { formatSpiceLevel, normalizeSpiceLevelKey } from '@/utils/formatters';
 import { comboNeedsOverallSpice, getSectionSpice, optionsMissingSpice, pickedSpiceOptions, pruneComboSpice, sectionOwnsSpice, sectionsMissingSpice, withOptionSpice, withSectionSpice } from '@/lib/comboSpice';
 import { comboItemQuantity } from '@/lib/comboQuantity';
 import ItemGallery from '@/components/ItemGallery';
+import Field from '@/components/Field';
+import { INSTRUCTIONS_MAX, cleanItemInstructions } from '@/lib/itemInstructions';
+import { stockLeftFor } from '@/lib/localStorageCart';
+import { getEcoPreselect } from '@/lib/menuPrefs';
+import AllergenBadges from '@/components/AllergenBadges';
+import { allergenInfo, cleanAllergens } from '@/lib/allergens';
 
 const SPICE_DOTS: Record<string, number> = {
   mild: 1, 'mild (kid friendly)': 1, normal: 2, medium: 3, 'medium spice': 3, 'semi-spicy': 4, 'semi spicy': 4, spicy: 4, 'super-spicy': 5, 'super spicy': 5, 'extra spicy': 5, hot: 5,
@@ -23,14 +29,17 @@ export function comboDefaults(item: FoodItem): Record<string, string[]> {
   const defaults: Record<string, string[]> = {};
   for (const section of item.sections ?? []) {
     if (!section?._id || !Array.isArray(section.selectedItems)) continue;
-    const defaultItems = section.selectedItems.filter((i) => i.isDefault);
+    const defaultItems = section.selectedItems.filter((i) => i.isDefault && !i.item?.soldOut);
     const multi = !section.isRequired || (section.maxSelection !== undefined && section.maxSelection > 1);
     if (multi) {
       if (defaultItems.length > 0) defaults[section._id] = defaultItems.map((i) => i._id);
-      else if (section.isRequired && section.minSelection && section.minSelection > 0) defaults[section._id] = section.selectedItems.slice(0, section.minSelection).map((i) => i._id);
+      else if (section.isRequired && section.minSelection && section.minSelection > 0) defaults[section._id] = section.selectedItems.filter((i) => !i.item?.soldOut).slice(0, section.minSelection).map((i) => i._id);
       else defaults[section._id] = [];
     } else if (defaultItems.length >= 1 && defaultItems[0]._id) defaults[section._id] = [defaultItems[0]._id];
-    else if (section.selectedItems.length > 0 && section.selectedItems[0]._id) defaults[section._id] = [section.selectedItems[0]._id];
+    else {
+      const first = section.selectedItems.find((i) => !i.item?.soldOut);
+      if (first?._id) defaults[section._id] = [first._id];
+    }
   }
   return defaults;
 }
@@ -42,14 +51,15 @@ function sectionHint(s: ComboSection): string {
   return min === max ? (max === 1 ? 'Choose 1' : `Choose ${max}`) : `Choose ${min} to ${max}`;
 }
 
-function Row({ selected, multi, onPress, children, right }: { selected: boolean; multi: boolean; onPress: () => void; children: React.ReactNode; right?: React.ReactNode }) {
+function Row({ selected, multi, onPress, children, right, disabled }: { selected: boolean; multi: boolean; onPress: () => void; children: React.ReactNode; right?: React.ReactNode; disabled?: boolean }) {
   return (
     <Pressable
+      disabled={disabled}
       onPress={() => {
         tap();
         onPress();
       }}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 52, paddingVertical: S.sm, paddingHorizontal: S.md, borderRadius: R.md, borderWidth: 1.5, borderColor: selected ? C.brand : C.line, backgroundColor: selected ? C.cream : C.white, marginBottom: S.sm }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 52, paddingVertical: S.sm, paddingHorizontal: S.md, borderRadius: R.md, borderWidth: 1.5, borderColor: selected ? C.brand : C.line, backgroundColor: selected ? C.cream : C.white, marginBottom: S.sm, opacity: disabled ? 0.5 : 1 }}
     >
       <View style={{ width: 22, height: 22, borderRadius: multi ? 6 : 11, borderWidth: 2, borderColor: selected ? C.brand : '#D1D5DB', backgroundColor: selected ? C.brand : C.white, alignItems: 'center', justifyContent: 'center' }}>
         {selected && <Ionicons name="checkmark" size={14} color={C.onBrand} />}
@@ -57,6 +67,34 @@ function Row({ selected, multi, onPress, children, right }: { selected: boolean;
       <View style={{ flex: 1 }}>{children}</View>
       {right}
     </Pressable>
+  );
+}
+
+/** One wrapping row of small pills (used for the spice choice inside a combo, so the form stays short) */
+function SpicePills({ levels, selected, onPick }: { levels: string[]; selected: string; onPick: (level: string) => void }) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm }}>
+      {levels.map((level) => {
+        const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
+        const on = selected === level;
+        return (
+          <Pressable
+            key={level}
+            onPress={() => { tap(); onPick(level); }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: S.md, borderRadius: 20, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white }}
+          >
+            <Text weight={on ? 'semibold' : 'medium'} size={14}>{formatSpiceLevel(level)}</Text>
+            {dots > 0 && (
+              <View style={{ flexDirection: 'row', gap: 3 }}>
+                {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: DOT_COLORS[i] }} />)}
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -86,6 +124,7 @@ export default function ItemSheet({
   // once the name has scrolled out of sight it moves into the sheet's top bar, so you always see which dish you are choosing for
   const [pinned, setPinned] = useState(false);
   const [qty, setQty] = useState(1);
+  const [instructions, setInstructions] = useState('');
   const insets = useSafeAreaInsets();
   const sectionY = useRef<Record<string, number>>({});
   const [showMissing, setShowMissing] = useState(false);
@@ -95,10 +134,12 @@ export default function ItemSheet({
     setShowMissing(false);
     setPinned(false);
     setQty(1);
+    setInstructions('');
     sectionY.current = {};
     setPortion(0);
     setSpice('');
-    setEco(false);
+    // with the Eco containers switch on, a dish that offers an eco container starts with it ticked (the customer can untick it)
+    setEco(getEcoPreselect() && Boolean(item.isEcoFriendlyContainer));
     setCombo(comboDefaults(item));
   }, [item]);
 
@@ -176,13 +217,18 @@ export default function ItemSheet({
       isEcoFriendlyContainer: eco,
       ecoContainerCharge: eco ? item.ecoContainerCharge : undefined,
       comboSelections: pruneComboSpice(item, combo),
+      notes: item.allowInstructions ? cleanItemInstructions(instructions) : undefined,
     }, withQuantity ? qty : 1);
   };
 
+  // an item with an order limit: how many more of this size the cart can take
+  const stockLeft = stockLeftFor(item, item.portions?.[portion]);
+  const soldOut = item.soldOut === true || (stockLeft !== null && stockLeft <= 0);
+  const maxQty = stockLeft !== null ? Math.max(1, Math.min(20, stockLeft)) : 20;
   const total = price * (withQuantity ? qty : 1);
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-    // (the insets come from the app's root: a Modal is a separate window and cannot measure them itself)
+    {/* the insets come from the app's root: a Modal is a separate window and cannot measure them itself */}
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       {/* the page's top bar: close, and the dish's name once it has scrolled out of sight (so you always know what you are choosing for) */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, paddingHorizontal: S.lg, paddingVertical: S.sm, minHeight: 56 }}>
@@ -214,6 +260,12 @@ export default function ItemSheet({
         {item.portions?.length ? 'From ' : ''}${Number(item.portions?.length && item.portionPrices?.length ? item.portionPrices[0] : item.price).toFixed(2)}
       </Text>
       {!!item.description && <Text size={15} color={C.body} style={{ marginTop: S.md, lineHeight: 22 }}>{item.description}</Text>}
+      {cleanAllergens(item.allergens).length > 0 && (
+        <View style={{ marginTop: S.md, gap: 8 }}>
+          <AllergenBadges allergens={item.allergens} size={20} gap={6} />
+          <Text weight="semibold" size={14}>Contains: {cleanAllergens(item.allergens).map((k) => allergenInfo(k)?.label ?? k).join(', ')}</Text>
+        </View>
+      )}
 
       {!!item.portions?.length && !!item.portionPrices?.length && (
         <View style={{ marginTop: S.xl }}>
@@ -247,13 +299,6 @@ export default function ItemSheet({
         </View>
       )}
 
-      {item.isEcoFriendlyContainer && (
-        <View style={{ marginTop: S.xl }}>
-          <Row selected={eco} multi onPress={() => setEco((v) => !v)} right={item.ecoContainerCharge ? <Text weight="semibold" size={15} color={C.brandDark}>+${item.ecoContainerCharge.toFixed(2)}</Text> : undefined}>
-            <Text weight="medium" size={15}>Eco-friendly container</Text>
-          </Row>
-        </View>
-      )}
 
       {item.hasCombo && !!item.sections?.length && (
         <View style={{ marginTop: S.xl }} onLayout={(e) => { sectionY.current.__combo = e.nativeEvent.layout.y; }}>
@@ -272,8 +317,9 @@ export default function ItemSheet({
                     key={si._id}
                     selected={chosen.includes(si._id)}
                     multi={multi}
+                    disabled={si.item?.soldOut === true}
                     onPress={() => pick(section, si._id)}
-                    right={si.price > 0 ? <Text weight="semibold" size={14} color={C.brandDark}>+${si.price.toFixed(2)}</Text> : undefined}
+                    right={si.item?.soldOut ? <Text weight="semibold" size={13} color={C.faint}>Out of stock</Text> : si.price > 0 ? <Text weight="semibold" size={14} color={C.brandDark}>+${si.price.toFixed(2)}</Text> : undefined}
                   >
                     <Text weight="medium" size={15}>
                       {si.item.name}
@@ -288,18 +334,7 @@ export default function ItemSheet({
                       <Text weight="semibold" size={14}>{`${p.option.item?.name ?? 'Item'} spice`}</Text>
                       <Text size={13} weight={showMissing && missingItemSpice?.option._id === p.option._id ? 'bold' : 'regular'} color={C.red}>{showMissing && missingItemSpice?.option._id === p.option._id ? 'Pick one' : 'Required'}</Text>
                     </View>
-                    {p.levels.map((level) => {
-                      const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
-                      return (
-                        <Row key={level} selected={p.level === level} multi={false} onPress={() => setCombo((prev) => withOptionSpice(prev, p.section._id ?? '', p.option._id ?? '', level))} right={
-                          <View style={{ flexDirection: 'row', gap: 3 }}>
-                            {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT_COLORS[i] }} />)}
-                          </View>
-                        }>
-                          <Text weight="medium" size={15}>{formatSpiceLevel(level)}</Text>
-                        </Row>
-                      );
-                    })}
+                    <SpicePills levels={p.levels} selected={p.level ?? ''} onPick={(level) => setCombo((prev) => withOptionSpice(prev, p.section._id ?? '', p.option._id ?? '', level))} />
                   </View>
                 ))}
                 {item.hasSpiceLevel && sectionOwnsSpice(section) && chosen.length > 0 && (
@@ -308,18 +343,7 @@ export default function ItemSheet({
                       <Text weight="semibold" size={14}>Spice level</Text>
                       <Text size={13} weight={showMissing && missingSpiceSection?._id === section._id ? 'bold' : 'regular'} color={C.red}>{showMissing && missingSpiceSection?._id === section._id ? 'Pick one' : 'Required'}</Text>
                     </View>
-                    {spiceLevels.map((level) => {
-                      const dots = SPICE_DOTS[normalizeSpiceLevelKey(level)] ?? 0;
-                      return (
-                        <Row key={level} selected={getSectionSpice(combo, section._id) === level} multi={false} onPress={() => setCombo((prev) => withSectionSpice(prev, section._id, level))} right={
-                          <View style={{ flexDirection: 'row', gap: 3 }}>
-                            {Array.from({ length: dots }).map((_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT_COLORS[i] }} />)}
-                          </View>
-                        }>
-                          <Text weight="medium" size={15}>{formatSpiceLevel(level)}</Text>
-                        </Row>
-                      );
-                    })}
+                    <SpicePills levels={spiceLevels} selected={getSectionSpice(combo, section._id) ?? ''} onPick={(level) => setCombo((prev) => withSectionSpice(prev, section._id, level))} />
                   </View>
                 )}
               </View>
@@ -327,16 +351,36 @@ export default function ItemSheet({
           })}
         </View>
       )}
+      {item.allowInstructions && (
+        <View style={{ marginTop: S.xl }}>
+          <Field
+            label="Special instructions (optional)"
+            value={instructions}
+            onChangeText={(t) => setInstructions(t.replace(/\n/g, ' ').slice(0, INSTRUCTIONS_MAX))}
+            maxLength={INSTRUCTIONS_MAX}
+            returnKeyType="done"
+            accessibilityLabel="Special instructions"
+          />
+          <Text size={12} color={C.muted} style={{ marginTop: -(S.lg - 4), textAlign: 'right' }}>{`${instructions.length}/${INSTRUCTIONS_MAX}`}</Text>
+        </View>
+      )}
+      {item.isEcoFriendlyContainer && (
+        <View style={{ marginTop: S.xl }}>
+          <Row selected={eco} multi onPress={() => setEco((v) => !v)} right={item.ecoContainerCharge ? <Text weight="semibold" size={15} color={C.brandDark}>+${item.ecoContainerCharge.toFixed(2)}</Text> : undefined}>
+            <Text weight="medium" size={15}>Eco-friendly container</Text>
+          </Row>
+        </View>
+      )}
       </ScrollView>
       {/* the bottom bar: quantity (day-wise dishes) and the add button, always in reach */}
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.lg, paddingTop: S.md, paddingBottom: Math.max(insets.bottom, S.lg), backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line, flexDirection: 'row', alignItems: 'center', gap: S.md }}>
-        {withQuantity && !closedLabel && (
+        {withQuantity && !closedLabel && !soldOut && (
           <View style={{ flexDirection: 'row', alignItems: 'center', height: 56, borderRadius: 28, borderWidth: 1.5, borderColor: C.line, backgroundColor: C.white }}>
             <Pressable onPress={() => { tap(); setQty((q) => Math.max(1, q - 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="Less" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="remove" size={22} color={qty <= 1 ? C.faint : C.ink} />
             </Pressable>
             <Text weight="bold" size={18} style={{ minWidth: 26, textAlign: 'center' }}>{qty}</Text>
-            <Pressable onPress={() => { tap(); setQty((q) => Math.min(20, q + 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="More" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable onPress={() => { tap(); if (qty >= maxQty) { if (stockLeft !== null) toast(`Only ${stockLeft} left`, 'error'); return; } setQty((q) => Math.min(maxQty, q + 1)); }} hitSlop={6} accessibilityRole="button" accessibilityLabel="More" style={{ width: 48, height: 56, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="add" size={22} color={C.ink} />
             </Pressable>
           </View>
@@ -344,6 +388,8 @@ export default function ItemSheet({
         <View style={{ flex: 1 }}>
           {closedLabel ? (
             <Button label={closedLabel} disabled onPress={() => {}} />
+          ) : soldOut ? (
+            <Button label="Out of stock" disabled onPress={() => {}} />
           ) : missing ? (
             <Button label={missing.label} onPress={goToMissing} />
           ) : (

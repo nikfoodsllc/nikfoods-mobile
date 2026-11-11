@@ -17,13 +17,15 @@ import { SMS_CONSENT_LABEL, SMS_CONSENT_SMALL_PRINT } from '@/lib/smsConsent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
-import { cartTotalsWithTip } from '@/lib/checkoutTotals';
-import { closedItemsNotice, parseClosedItems } from '@/lib/closedDaysNotice';
+import { cartTotalsWithTip, cleanTipText, MAX_TIP_AMOUNT, parseTipText } from '@/lib/checkoutTotals';
+import { closedItemsNotice, outOfStockNotice, parseClosedItems, parseOutOfStock } from '@/lib/closedDaysNotice';
 import { emptyCartEverywhere } from '@/lib/cartSync';
 import * as localCart from '@/lib/localStorageCart';
 import { hasAmount, taxesAndFeesOf, TAXES_FEES_TEXT, TAXES_FEES_TOOLTIP } from '@/lib/orderTotalsDisplay';
 import { paymentIntentIdFromClientSecret, reportPaymentError } from '@/lib/checkout/reportPaymentError';
 import { planCreditForOrder, toCents, toDollars } from '@/lib/storeCredit';
+import { getDefaultFeeRegion } from '@/lib/cartLogic';
+import { currentStoreCountry } from '@/lib/storeCountry';
 import { useAddresses } from '@/lib/useAddresses';
 import ActionBar, { ACTION_BAR_SPACE } from '@/components/ActionBar';
 import { IAddress } from '@/types/auth';
@@ -52,7 +54,10 @@ export default function Checkout() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [instructions, setInstructions] = useState('');
-  const [tipPct, setTipPct] = useState(0);
+  const [tipPct, setTipPct] = useState(10);
+  // a tip typed in dollars; when set it replaces the percentage
+  const [tipText, setTipText] = useState('');
+  const customTip = parseTipText(tipText);
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditLoaded, setCreditLoaded] = useState(false);
   const [useCredit, setUseCredit] = useState(true);
@@ -147,23 +152,36 @@ export default function Checkout() {
     })();
   }, [user, authenticatedFetch]);
 
-  const tipAmount = cart ? (cart.subtotal * tipPct) / 100 : 0;
+  const tipAmount = customTip !== null ? customTip : cart ? (cart.subtotal * tipPct) / 100 : 0;
   const localCredit = useMemo(
-    () => (useCredit && creditBalance > 0 && cart && !cart.appliedCoupon?.discountAmount ? planCreditForOrder({ subtotal: cart.subtotal, deliveryFee: cart.deliveryFee, tip: tipAmount, balanceCents: toCents(creditBalance) }) : null),
+    () => (useCredit && creditBalance > 0 && cart && !cart.appliedCoupon?.discountAmount ? planCreditForOrder({ subtotal: cart.subtotal, deliveryFee: cart.deliveryFee, tip: tipAmount, balanceCents: toCents(creditBalance), region: getDefaultFeeRegion() }) : null),
     [useCredit, creditBalance, cart, tipAmount]
   );
   const creditApplied = useCredit && creditBalance > 0 ? (serverCredit ? serverCredit.applied : localCredit ? toDollars(localCredit.creditCents) : 0) : 0;
   const credited = useCredit && creditBalance > 0 && creditApplied > 0 ? (orderId && serverCredit && serverCredit.platformFee !== undefined && serverCredit.tax !== undefined && serverCredit.total !== undefined ? { platformFee: serverCredit.platformFee, tax: serverCredit.tax, total: serverCredit.total } : localCredit ? { platformFee: localCredit.platformFee, tax: localCredit.tax, total: localCredit.total } : null) : null;
   const covered = useCredit && creditBalance > 0 && (serverCredit ? serverCredit.covered : Boolean(localCredit && localCredit.cardCents === 0 && localCredit.creditCents > 0));
   const creditLocked = Boolean(orderId);
+  // an order that holds store credit keeps its amounts, so its tip cannot change either
+  const tipLocked = Boolean(orderId) && creditApplied > 0;
 
-  const totals = cart ? cartTotalsWithTip(cart, tipPct, credited) : null;
+  const totals = cart ? cartTotalsWithTip(cart, tipPct, credited, customTip) : null;
   const canPay = Boolean(cart?.canCheckout && isCompleteAddress(cart?.selectedAddress));
   const creditReady = !user || creditLoaded;
 
   // ---- the website's "closed days" handling: stay here, remove what closed, say so ----
   const handleClosed = useCallback(
-    async (status: number, data: { code?: string; error?: string; closedItems?: unknown } | null) => {
+    async (status: number, data: { code?: string; error?: string; closedItems?: unknown; outOfStock?: unknown } | null) => {
+      // an item sold out while the customer was here: remove it and say so (same as the website)
+      if (status === 409 && data?.code === 'OUT_OF_STOCK') {
+        const short = parseOutOfStock(data.outOfStock);
+        if (short.length > 0) {
+          localCart.removeSoldOutLines(short.map((i) => i.foodItemId));
+          setClosed(outOfStockNotice(short));
+          setBanner('');
+          await refreshCart();
+          return true;
+        }
+      }
       if (status !== 409 || data?.code !== 'ORDER_CUTOFF_CLOSED') return false;
       const closedItems = parseClosedItems(data.closedItems);
       const { removed, linesLeft } = localCart.removeClosedLines(closedItems);
@@ -175,6 +193,9 @@ export default function Checkout() {
     [refreshCart]
   );
 
+  // the newest payment secret (the state may not have updated yet when Pay is tapped right after a change)
+  const secretRef = useRef<string | null>(null);
+
   // ---- payment session (same endpoint as the website's checkout) ----
   const prepare = useCallback(async (): Promise<boolean> => {
     if (!cart || cart.days.length === 0) return false;
@@ -183,7 +204,7 @@ export default function Checkout() {
       const r = await authenticatedFetch('/api/checkout/payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cart, tipPercentage: tipPct, currency: 'usd', paymentIntentId: intentId ?? undefined, useStoreCredit: useCredit && creditBalance > 0, orderId: orderId ?? undefined }),
+        body: JSON.stringify({ cart, tipPercentage: tipPct, tipAmount: customTip ?? undefined, storeCountry: currentStoreCountry(), currency: 'usd', paymentIntentId: intentId ?? undefined, useStoreCredit: useCredit && creditBalance > 0, orderId: orderId ?? undefined }),
       });
       const data = await r.json();
       if (!r.ok || !data.success) {
@@ -196,6 +217,7 @@ export default function Checkout() {
       if (data.data.coveredByCredit === true) {
         setIntentId(null);
         setClientSecret(null);
+        secretRef.current = null;
         return true;
       }
       if (!data.data.clientSecret || !data.data.paymentIntentId) {
@@ -204,6 +226,7 @@ export default function Checkout() {
       }
       setIntentId(data.data.paymentIntentId);
       setClientSecret(data.data.clientSecret);
+      secretRef.current = data.data.clientSecret;
       return true;
     } catch (e) {
       setBanner(e instanceof Error ? e.message : 'Failed to load payment options.');
@@ -211,18 +234,21 @@ export default function Checkout() {
     } finally {
       setPreparing(false);
     }
-  }, [cart, authenticatedFetch, tipPct, intentId, useCredit, creditBalance, orderId, handleClosed]);
+  }, [cart, authenticatedFetch, tipPct, customTip, intentId, useCredit, creditBalance, orderId, handleClosed]);
 
   const prepareRef = useRef(prepare);
   prepareRef.current = prepare;
 
   // open the payment session as soon as the cart can be ordered, and again when the amount changes
-  const amountKey = `${tipPct}-${cart?.subtotal}-${cart?.platformFee}-${cart?.deliveryFee}-${cart?.tax}-${useCredit && creditBalance > 0}-${creditBalance}`;
+  const amountKey = `${tipPct}-${customTip ?? ''}-${cart?.subtotal}-${cart?.platformFee}-${cart?.deliveryFee}-${cart?.tax}-${useCredit && creditBalance > 0}-${creditBalance}`;
+  // (also once the order exists: a customer who closed the payment screen and then changed the tip must pay the new total, so the server
+  // changes the order and the payment too. Only an amount change triggers it, not the order being created.)
   useEffect(() => {
-    if (!canPay || !creditReady || orderId) return;
+    if (!canPay || !creditReady) return;
     const t = setTimeout(() => void prepareRef.current(), 350);
     return () => clearTimeout(t);
-  }, [amountKey, canPay, creditReady, orderId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amountKey, canPay, creditReady]);
 
   const validate = () => {
     const e: typeof errors = {};
@@ -243,6 +269,8 @@ export default function Checkout() {
         cart,
         customerInfo: { name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') },
         tipPercentage: tipPct,
+        tipAmount: customTip ?? undefined,
+        storeCountry: currentStoreCountry(),
         paymentMethod: 'Credit Card',
         currency: 'usd',
         paymentIntentId: intentId ?? undefined,
@@ -309,6 +337,13 @@ export default function Checkout() {
       let id = orderId;
       let secret = clientSecret;
       let creditOnly = false;
+      // The order was already created by an earlier tap (the payment screen was closed or the card failed). The customer may have changed the
+      // tip since: make the server bring the order and the payment up to what the screen shows, and wait for it, before the sheet opens.
+      if (id) {
+        const synced = await prepare();
+        if (!synced) return;
+        secret = secretRef.current ?? secret;
+      }
       if (!id) {
         const created = await createOrder();
         if (!created) return;
@@ -352,7 +387,11 @@ export default function Checkout() {
       }
       const res = await presentPaymentSheet();
       if (res.error) {
-        if (res.error.code === 'Canceled') return;
+        if (res.error.code === 'Canceled') {
+          // not an error: the customer closed the payment screen. Tell the server so the unpaid order is explained in the admin.
+          reportPaymentError({ stage: 'dismissed', message: 'Closed the payment screen without paying', orderId: id, paymentIntentId: paymentIntentIdFromClientSecret(secret) });
+          return;
+        }
         reportPaymentError({ stage: 'confirm_payment', message: res.error.message, code: res.error.code, orderId: id, paymentIntentId: paymentIntentIdFromClientSecret(secret) });
         setBanner(res.error.message);
         return;
@@ -477,15 +516,21 @@ export default function Checkout() {
             <Text weight="bold" size={17}>Add a tip</Text>
             <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
               {TIPS.map((p) => {
-                const on = tipPct === p;
+                const on = customTip === null && tipPct === p;
                 return (
-                  <Pressable key={p} onPress={() => { tap(); setTipPct(p); }} accessibilityRole="button" accessibilityLabel={p === 0 ? 'No tip' : `${p} percent tip`} style={{ flex: 1, height: 58, borderRadius: R.md, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, alignItems: 'center', justifyContent: 'center' }}>
+                  <Pressable key={p} disabled={tipLocked} onPress={() => { tap(); setTipPct(p); setTipText(''); }} accessibilityRole="button" accessibilityLabel={p === 0 ? 'No tip' : `${p} percent tip`} style={{ flex: 1, height: 58, borderRadius: R.md, borderWidth: 1.5, borderColor: on ? C.brand : C.line, backgroundColor: on ? C.cream : C.white, alignItems: 'center', justifyContent: 'center' }}>
                     <Text weight="bold" size={16}>{p === 0 ? 'None' : `${p}%`}</Text>
                     {p > 0 && <Text size={12} color={C.muted}>${((cart.subtotal * p) / 100).toFixed(2)}</Text>}
                   </Pressable>
                 );
               })}
             </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.xs, marginTop: S.sm, height: 48, borderRadius: R.md, borderWidth: 1.5, borderColor: tipText !== '' && customTip === null ? C.red : customTip !== null ? C.brand : C.line, backgroundColor: C.white, paddingHorizontal: S.md }}>
+              <Text size={16} color={C.muted}>$</Text>
+              <TextInput value={tipText} editable={!tipLocked} onChangeText={(t) => setTipText(cleanTipText(t))} placeholder="Other amount" placeholderTextColor={C.faint} keyboardType="decimal-pad" maxLength={7} style={{ flex: 1, fontFamily: FONT.medium, fontSize: 16, color: C.text }} accessibilityLabel="Tip amount in dollars" />
+            </View>
+            {tipText !== '' && customTip === null && <Text size={12} color={C.red} style={{ marginTop: S.xs }}>Up to ${MAX_TIP_AMOUNT}</Text>}
+            {tipLocked && <Text size={12} color={C.muted} style={{ marginTop: S.xs }}>The tip is set once payment has started with store credit.</Text>}
           </Card>
 
           {creditBalance > 0 && (

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppLock from '@/components/AppLock';
 import PushBridge from '@/components/PushBridge';
+import StockLimitBridge from '@/components/StockLimitBridge';
 import { ToastProvider } from '@/components/Toast';
 import { APP_SCHEME, APPLE_MERCHANT_ID, STRIPE_PUBLISHABLE_KEY } from '@/constants/config';
 import { C } from '@/constants/theme';
@@ -20,6 +21,7 @@ import { routeForIncomingLink } from '@/lib/deepLink';
 import { configureNotifications } from '@/lib/push';
 import { prefetchMenu } from '@/lib/useHomeMenu';
 import { initRuntime, onRedirect } from '@/lib/runtime';
+import { initStoreRegion } from '@/lib/storeCountry';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -31,7 +33,8 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initRuntime()
+    // the App Store country decides the Platform Fee rate, so it is read before the first cart total is shown
+    Promise.all([initRuntime(), initStoreRegion()])
       .catch((e) => console.warn('runtime init failed', e))
       .finally(() => {
         setReady(true);
@@ -49,6 +52,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'} merchantIdentifier={APPLE_MERCHANT_ID} urlScheme={APP_SCHEME}>
         <ToastProvider>
+          <StockLimitBridge />
           <AuthProvider>
             <CartProvider>
               <AppLock>

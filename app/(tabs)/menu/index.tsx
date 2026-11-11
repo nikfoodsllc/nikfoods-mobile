@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Switch, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -13,25 +13,31 @@ import { Button, Eyebrow, Text, tap } from '@/components/ui';
 import { C, R, S, shadow } from '@/constants/theme';
 import { buildMenuSections, categoryOrSubsHaveItems, countDishes } from '@/lib/homeMenu';
 import { useHomeMenu } from '@/lib/useHomeMenu';
+import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { useVegOnly } from '@/lib/vegOnly';
+import { useSkipAllergens } from '@/lib/menuPrefs';
+import MenuFilters from '@/components/MenuFilters';
 
 /** Menu: every category as a big picture row; tap one to see its dishes. Searching shows matching dishes from the whole menu. */
 export default function MenuCategories() {
+  const listRef = useRef<FlatList>(null);
+  useScrollToTopOnTab('menu', () => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   const bottomSpace = useTabBarSpace(true);
   const router = useRouter();
   const { categories, map, availableDates, loading, error, reload } = useHomeMenu();
   const [vegOnly, setVegOnly] = useVegOnly();
+  const [skipAllergens] = useSkipAllergens();
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const searching = query.trim().length > 0;
 
   const rows = useMemo(
     () =>
-      buildMenuSections(categories, map, '', vegOnly, availableDates)
+      buildMenuSections(categories, map, '', vegOnly, availableDates, skipAllergens)
         .filter((s) => s.category && categoryOrSubsHaveItems(s.category))
         .map((s) => ({ meta: s.meta, count: countDishes(s.category) })),
-    [categories, map, vegOnly, availableDates]
+    [categories, map, vegOnly, availableDates, skipAllergens]
   );
 
   const top = (
@@ -46,7 +52,12 @@ export default function MenuCategories() {
           <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
         </View>
       </View>
-      <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+        <View style={{ flex: 1 }}>
+          <SearchField value={query} onChangeText={setQuery} placeholder="Search dishes" />
+        </View>
+        <MenuFilters />
+      </View>
     </View>
   );
 
@@ -69,6 +80,7 @@ export default function MenuCategories() {
       ) : (
         <>
           <FlatList
+            ref={listRef}
             data={rows}
             keyExtractor={(r) => r.meta._id}
             ListHeaderComponent={<View style={{ paddingHorizontal: S.xl, paddingBottom: S.lg }}><DeliveryBar /></View>}

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, FONT, TAB_BAR_GAP, TAB_BAR_HEIGHT } from '@/constants/theme';
 import ChatFab from '@/components/ChatFab';
 import { useCart } from '@/contexts/CartContext';
+import { emitTabPress } from '@/lib/tabScroll';
 
 /** Four tabs in a floating glass pill: Home, Menu, Cart, Profile. */
 export default function TabLayout() {
@@ -14,6 +15,8 @@ export default function TabLayout() {
   const tab = (name: string, title: string, icon: keyof typeof Ionicons.glyphMap, iconOn: keyof typeof Ionicons.glyphMap, badge?: number) => (
     <Tabs.Screen
       name={name}
+      // pressing a tab also takes you to the top of its page
+      listeners={{ tabPress: () => emitTabPress(name) }}
       options={{
         title,
         tabBarBadge: badge && badge > 0 ? badge : undefined,

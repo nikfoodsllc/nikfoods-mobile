@@ -44,3 +44,46 @@ export function closedItemsNotice(serverMessage: string, removedCount: number, l
     ? `${base} ${removed}, so you can continue with the rest of your order.`
     : `${base} ${removed}, so your cart is now empty.`;
 }
+
+/** An item the server refused because it is sold out or has less left than the cart asks for. */
+export interface OutOfStockInfo {
+  foodItemId: string;
+  name: string;
+  /** what is left, in words ("2", "1.5 lb"); 0 or less left means sold out */
+  remainingText: string;
+  remainingBase: number;
+}
+
+/** The refused items from a 409 OUT_OF_STOCK response (anything without an id and a name is ignored). */
+export function parseOutOfStock(value: unknown): OutOfStockInfo[] {
+  if (!Array.isArray(value)) return [];
+  const out: OutOfStockInfo[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const { foodItemId, name, remainingText, remainingBase } = entry as Record<string, unknown>;
+    if (typeof foodItemId !== 'string' || typeof name !== 'string' || !name.trim()) continue;
+    out.push({ foodItemId, name: name.trim(), remainingText: typeof remainingText === 'string' ? remainingText : '', remainingBase: typeof remainingBase === 'number' ? remainingBase : 0 });
+  }
+  return out;
+}
+
+/**
+ * The red banner when items sold out (or have less left than the cart asks for) while the customer was on checkout. Items that are
+ * gone and items that are only short get their own heading, one item per line:
+ *
+ *   Sold out, so they’ve been removed from your cart:
+ *
+ *   Item 1
+ *
+ *   Not enough left, so they’ve been removed from your cart:
+ *
+ *   Item 2 (only 1 left)
+ */
+export function outOfStockNotice(items: OutOfStockInfo[]): string {
+  const gone = items.filter((i) => !(i.remainingBase > 0));
+  const short = items.filter((i) => i.remainingBase > 0);
+  const blocks: string[] = [];
+  if (gone.length > 0) blocks.push(`Sold out, so they’ve been removed from your cart:\n\n${gone.map((i) => i.name).join('\n')}`);
+  if (short.length > 0) blocks.push(`Not enough left, so they’ve been removed from your cart:\n\n${short.map((i) => (i.remainingText ? `${i.name} (only ${i.remainingText} left)` : i.name)).join('\n')}`);
+  return blocks.join('\n\n');
+}

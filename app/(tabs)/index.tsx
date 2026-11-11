@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import ChefsPick from '@/components/ChefsPick';
 import DeliveryTracker from '@/components/DeliveryTracker';
 import HomeBanners from '@/components/HomeBanners';
 import MenuSubscribe from '@/components/MenuSubscribe';
+import UpdateBanner from '@/components/UpdateBanner';
 import { deliveryOf, StatusChip } from '@/components/OrderParts';
 import Reveal from '@/components/Reveal';
 import { Button, Card, Eyebrow, Text, tap } from '@/components/ui';
@@ -18,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
 import { greeting, useHomeIntro } from '@/lib/homeIntro';
 import { pickNextDelivery, todayPacific } from '@/lib/nextDelivery';
+import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useHomeMenu } from '@/lib/useHomeMenu';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
 import { Order } from '@/types/order';
@@ -27,6 +29,8 @@ const logo = require('../../assets/images/nikfoods-logo.png');
 
 /** Home: where you are delivering, your next delivery, a way into the menu and the menu alerts. */
 export default function Home() {
+  const scrollRef = useRef<Animated.ScrollView>(null);
+  useScrollToTopOnTab('index', () => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   const bottomSpace = useTabBarSpace(true);
   const router = useRouter();
   const { user } = useAuth();
@@ -68,11 +72,12 @@ export default function Home() {
   }, [loadNext]);
 
   const first = (user?.name ?? '').trim().split(/\s+/)[0];
-  const hello = greeting(intro, first);
+  const hello = intro === null ? null : greeting(intro, first);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
       <Animated.ScrollView
+        ref={scrollRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: S.xl, paddingTop: S.md, paddingBottom: bottomSpace, gap: S.xl + 4 }}
@@ -80,11 +85,12 @@ export default function Home() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={C.brand} onRefresh={async () => { setRefreshing(true); await Promise.all([reload(), loadNext()]); setRefreshing(false); }} />}
       >
+        <UpdateBanner />
         <Reveal index={0}>
           <Image source={logo} style={{ width: 118, height: 34 }} contentFit="contain" accessibilityLabel="NikFoods" />
           {/* a fixed box: whatever the text is, it shrinks until it fits */}
           <View style={{ height: GREETING_BOX, marginTop: S.xl, justifyContent: 'center' }}>
-            {'custom' in hello ? (
+            {hello === null ? null : 'custom' in hello ? (
               <Text weight="display" size={46} color={C.brandDark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.4} style={{ maxHeight: GREETING_BOX }}>{hello.custom.map((part, i) => (
                   <Text key={i} weight="display" size={46} color={part.isName ? C.text : C.brandDark}>{part.text}</Text>
                 ))}</Text>
@@ -141,9 +147,9 @@ export default function Home() {
           <MenuSubscribe />
         </Reveal>
 
-        {!user && <Button label="Log in" variant="outline" onPress={() => router.push('/login')} />}
+        {!user && <Button label="Log in / Sign up" variant="outline" onPress={() => router.push('/login')} />}
 
-        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic Indian food delivered to your doorstep.</Eyebrow>
+        <Eyebrow color={C.muted} style={{ textAlign: 'center', letterSpacing: 2 }}>Authentic Indian food delivered to your door.</Eyebrow>
 
       </Animated.ScrollView>
       <CartBar />

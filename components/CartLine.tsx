@@ -7,6 +7,7 @@ import { Stepper, Text, VegDot, tap } from '@/components/ui';
 import { CartItem } from '@/types/cart';
 import { formatSpiceLevel } from '@/utils/formatters';
 import { getOptionSpice, getSectionSpice } from '@/lib/comboSpice';
+import { stockLeftFor } from '@/lib/localStorageCart';
 
 /** What the customer picked on a combo, one line per section ("Veg Curry of the Day: Kale Chane"). */
 export function comboLines(item: CartItem): string[] {
@@ -32,6 +33,8 @@ export default function CartLine({ item, onMinus, onPlus, onRemove }: { item: Ca
     item.isEcoFriendlyContainer ? 'Eco container' : null,
   ].filter(Boolean) as string[];
   const combo = comboLines(item);
+  // an item with an order limit: no more than what is left
+  const left = stockLeftFor(item.foodItem, item.selectedPortion);
   return (
     <View style={{ flexDirection: 'row', gap: S.md, paddingVertical: S.md }}>
       <View style={{ width: 72, height: 72, borderRadius: 36, overflow: 'hidden', backgroundColor: C.surface }}>
@@ -65,8 +68,9 @@ export default function CartLine({ item, onMinus, onPlus, onRemove }: { item: Ca
         {combo.map((l) => (
           <Text key={l} size={12} color={C.muted} style={{ marginTop: 2 }}>{l}</Text>
         ))}
+        {!!item.notes && <Text size={12} color={C.muted} style={{ marginTop: 2, fontStyle: 'italic' }}>Instructions: {item.notes}</Text>}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: S.sm }}>
-          <Stepper compact value={item.quantity} onMinus={onMinus} onPlus={onPlus} />
+          <Stepper compact value={item.quantity} onMinus={onMinus} onPlus={onPlus} plusDisabled={left !== null && left <= 0} />
           <Text weight="bold" size={16}>${item.totalPrice.toFixed(2)}</Text>
         </View>
       </View>

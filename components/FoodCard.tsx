@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { C, R, S, shadowSm } from '@/constants/theme';
 import { Stepper, Text, VegDot, tap } from '@/components/ui';
+import AllergenBadges from '@/components/AllergenBadges';
 
 const IMAGE = 92;
 
@@ -17,7 +18,9 @@ export default function FoodCard({
   price,
   starting,
   veg,
+  allergens,
   available = true,
+  soldOut,
   quantity,
   inCartCount,
   customizable,
@@ -33,7 +36,11 @@ export default function FoodCard({
   price: number | null;
   starting?: boolean;
   veg?: boolean;
+  /** allergens the dish contains: a row of badges under the name (tap one to read it) */
+  allergens?: string[];
   available?: boolean;
+  /** the order limit was reached: says Out of stock */
+  soldOut?: boolean;
   quantity: number;
   inCartCount: number;
   customizable: boolean;
@@ -46,12 +53,18 @@ export default function FoodCard({
   onDecrement: () => void;
 }) {
   const off = !available || closed;
+  const gone = Boolean(soldOut) && !closed;
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', gap: S.md, backgroundColor: C.white, borderRadius: R.xl, padding: S.md, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line }, shadowSm]}>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${name}, details`} style={{ width: IMAGE, height: IMAGE }}>
         <View style={{ width: IMAGE, height: IMAGE, borderRadius: 24, overflow: 'hidden', backgroundColor: C.surface }}>
           <Image source={imageUrl ? { uri: imageUrl } : undefined} style={{ width: '100%', height: '100%', opacity: off ? 0.45 : 1 }} contentFit="cover" transition={200} />
         </View>
+        {gone && (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: IMAGE, borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(31,23,18,0.45)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 }}>
+            <Text weight="bold" size={11} color={C.white} style={{ letterSpacing: 1.2, textAlign: 'center', textTransform: 'uppercase' }}>Out of stock</Text>
+          </View>
+        )}
         <View pointerEvents="none" style={{ position: 'absolute', top: 6, left: 6 }}>
           <VegDot veg={veg} size={16} />
         </View>
@@ -64,18 +77,23 @@ export default function FoodCard({
 
       <View style={{ flex: 1, gap: 8 }}>
         <Pressable onPress={onPress} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Text weight="semibold" size={16} numberOfLines={3} style={{ color: C.text }}>{name}</Text>
+          <Text weight="semibold" size={16} numberOfLines={3} style={{ color: gone ? C.muted : C.text }}>{name}</Text>
           {note ? <Text weight="medium" size={13} color={C.muted} style={{ marginTop: 2 }}>{note}</Text> : null}
         </Pressable>
+        {allergens && allergens.length > 0 ? <AllergenBadges allergens={allergens} size={14} gap={4} /> : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.sm, minHeight: 44 }}>
           {price != null ? (
-            <Text weight="semibold" size={16} color={C.brandDark} style={{ flexShrink: 1 }}>
+            <Text weight="semibold" size={16} color={gone ? C.faint : C.brandDark} style={{ flexShrink: 1, textDecorationLine: gone ? 'line-through' : 'none' }}>
               {starting ? 'From ' : ''}${price.toFixed(2)}
             </Text>
           ) : (
             <View />
           )}
-          {off ? (
+          {gone ? (
+            <View style={{ paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: C.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}>
+              <Text weight="semibold" size={12} color={C.muted}>Sold out</Text>
+            </View>
+          ) : off ? (
             <Text weight="medium" size={13} color={C.faint}>{closed ? 'Ordering closed' : 'Unavailable'}</Text>
           ) : quantity > 0 ? (
             <Stepper compact value={quantity} onMinus={onDecrement} onPlus={onIncrement} />
