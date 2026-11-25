@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Constants from 'expo-constants';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { STORE_URL } from '@/constants/config';
 
 /** The version of this build, from app.json ('1.0.3'). */
@@ -20,7 +20,7 @@ export function compareVersions(a: string, b: string): number {
 
 const DISMISSED_KEY = 'updateBannerDismissed';
 
-/** Opens this app's page in the App Store (the Dev app: TestFlight). */
+/** Opens this app's page in the App Store (the Dev app: TestFlight) or in Google Play on Android. */
 export function openStore(): void {
   void Linking.openURL(STORE_URL).catch(() => undefined);
 }
@@ -37,7 +37,9 @@ export function useUpdateAvailable(): { latest: string | null; dismiss: () => vo
     fetch('/api/app-settings')
       .then((r) => r.json())
       .then((j) => {
-        const v = typeof j?.data?.latestVersion === 'string' ? j.data.latestVersion.trim() : '';
+        // each store has its own newest version: the App Store one for the iPhone app, the Google Play one for Android
+        const raw = Platform.OS === 'android' ? j?.data?.latestVersionAndroid : j?.data?.latestVersion;
+        const v = typeof raw === 'string' ? raw.trim() : '';
         if (!live || !/^\d{1,3}(\.\d{1,3}){1,2}$/.test(v)) return;
         if (compareVersions(APP_VERSION, v) >= 0) return;
         if (localStorage.getItem(DISMISSED_KEY) === v) return;

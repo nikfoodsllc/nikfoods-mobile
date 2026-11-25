@@ -1,4 +1,8 @@
 import * as LocalAuthentication from 'expo-local-authentication';
+import { Platform } from 'react-native';
+
+/** What the phone's own unlock is called when we cannot tell (iPhone: Face ID; Android: Fingerprint). */
+export const DEFAULT_LOCK_LABEL = Platform.OS === 'android' ? 'Fingerprint' : 'Face ID';
 
 /**
  * Optional lock for the app (Face ID, Touch ID, or the phone's passcode as the fallback). Off until the customer turns it on in
@@ -17,7 +21,7 @@ export const RELOCK_AFTER_MS = 30_000;
 
 export interface LockSupport {
   available: boolean;
-  /** what to call it: "Face ID", "Touch ID" or "Passcode" */
+  /** what to call it: "Face ID", "Touch ID" or "Passcode" (Android: "Face unlock", "Fingerprint" or "Screen lock") */
   label: string;
 }
 
@@ -28,11 +32,14 @@ export async function lockSupport(): Promise<LockSupport> {
       LocalAuthentication.isEnrolledAsync(),
       LocalAuthentication.supportedAuthenticationTypesAsync(),
     ]);
-    if (!hasHardware || !enrolled) return { available: false, label: 'Face ID' };
-    const label = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION) ? 'Face ID' : types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT) ? 'Touch ID' : 'Passcode';
+    if (!hasHardware || !enrolled) return { available: false, label: DEFAULT_LOCK_LABEL };
+    const face = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
+    const finger = types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT);
+    // most Android phones unlock with a fingerprint; the face option there is often the weaker kind, so the fingerprint name comes first
+    const label = Platform.OS === 'android' ? (finger ? 'Fingerprint' : face ? 'Face unlock' : 'Screen lock') : face ? 'Face ID' : finger ? 'Touch ID' : 'Passcode';
     return { available: true, label };
   } catch {
-    return { available: false, label: 'Face ID' };
+    return { available: false, label: DEFAULT_LOCK_LABEL };
   }
 }
 

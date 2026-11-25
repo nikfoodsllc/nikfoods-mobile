@@ -28,7 +28,7 @@ export default function CategoryPage() {
         <MenuFilters size={40} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text weight="semibold" size={13} color={C.body} maxFontSizeMultiplier={1.1}>Veg</Text>
-          <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
+          <Switch thumbColor="#FFFFFF" value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
         </View>
       </View>
       <MenuBrowser categoryId={String(id)} />

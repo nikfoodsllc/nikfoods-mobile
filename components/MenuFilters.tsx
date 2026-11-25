@@ -38,7 +38,7 @@ export default function MenuFilterButton({ size = 50 }: { size?: number }) {
       <Sheet visible={open} onClose={() => setOpen(false)} title="Menu preferences">
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, borderBottomWidth: 1, borderBottomColor: C.line }}>
           <Text weight="semibold" size={16}>Eco containers</Text>
-          <Switch value={eco} onValueChange={(v) => { tap(); setEco(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Eco containers" />
+          <Switch thumbColor="#FFFFFF" value={eco} onValueChange={(v) => { tap(); setEco(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Eco containers" />
         </View>
         <Text weight="semibold" size={13} color={C.muted} style={{ marginTop: S.lg, marginBottom: 2, letterSpacing: 1, textTransform: 'uppercase' }}>Skip dishes with</Text>
         {ALLERGENS.map((a) => {

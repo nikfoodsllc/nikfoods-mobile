@@ -32,17 +32,36 @@
         "EXPO_PUBLIC_SITE_URL": "https://www.nikfoods.com",
         "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51HdWaqKA6kkBLygB9g6lJ8QBu5pTCeXfno0x3b7rPV2KFLIf9RziEMPoUd7K3uZyXOEkPxJjMLzCZ2PTO3w2UBqm00kjva9C6K"
       }
+    },
+    "emulator": {
+      "extends": "preview",
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "autoIncrement": false
     }
   },
   "submit": {
     "production": {
       "ios": {
         "ascAppId": "6767141830"
+      },
+      "android": {
+        "serviceAccountKeyPath": "../play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     },
     "preview": {
       "ios": {
         "ascAppId": "6825667400"
+      },
+      "android": {
+        "serviceAccountKeyPath": "../play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

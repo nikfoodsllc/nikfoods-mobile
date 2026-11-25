@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import * as Device from 'expo-device';
+import { FALLBACK_DEVICE_NAME } from '@/lib/push';
 import { useRouter } from 'expo-router';
 import AuthShell from '@/components/AuthShell';
 import Field from '@/components/Field';
@@ -81,7 +82,7 @@ export default function Login() {
         if (support.available) {
           Alert.alert(`Sign in with ${support.label}?`, undefined, [
             { text: 'Not now', style: 'cancel', onPress: rememberFaceIdOfferDeclined },
-            { text: 'Turn on', onPress: () => void turnOnFaceIdSignIn(Device.deviceName ?? 'iPhone') },
+            { text: 'Turn on', onPress: () => void turnOnFaceIdSignIn(Device.deviceName ?? FALLBACK_DEVICE_NAME) },
           ]);
         }
       }

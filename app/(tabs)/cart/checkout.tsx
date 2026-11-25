@@ -541,7 +541,7 @@ export default function Checkout() {
                   {useCredit && creditApplied > 0 ? `$${creditApplied.toFixed(2)} applied` : `$${creditBalance.toFixed(2)} available`}
                 </Text>
               </View>
-              <Switch value={useCredit} disabled={creditLocked} onValueChange={(v) => { tap(); setUseCredit(v); setServerCredit(null); }} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel="Use store credit" />
+              <Switch thumbColor="#FFFFFF" value={useCredit} disabled={creditLocked} onValueChange={(v) => { tap(); setUseCredit(v); setServerCredit(null); }} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel="Use store credit" />
             </Card>
           )}
 

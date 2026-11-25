@@ -49,7 +49,7 @@ export default function MenuCategories() {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm, paddingBottom: 6 }}>
           <Text weight="semibold" size={14} color={C.body} maxFontSizeMultiplier={1.1}>Veg only</Text>
-          <Switch value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
+          <Switch thumbColor="#FFFFFF" value={vegOnly} onValueChange={(v) => { tap(); setVegOnly(v); }} trackColor={{ true: C.green, false: '#E4DED5' }} ios_backgroundColor="#E4DED5" accessibilityLabel="Veg only" />
         </View>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
