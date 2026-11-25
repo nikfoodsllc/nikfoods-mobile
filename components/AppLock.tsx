@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button, Text } from '@/components/ui';
 import { C, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticate, isLockEnabled, lockSupport, shouldRelock } from '@/lib/biometrics';
+import { authenticate, DEFAULT_LOCK_LABEL, isLockEnabled, lockSupport, shouldRelock } from '@/lib/biometrics';
 
 /**
  * Covers the app until the phone confirms it is the owner, when the customer turned the lock on (Account > Face ID) and is
@@ -14,7 +14,7 @@ export default function AppLock({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [locked, setLocked] = useState(false);
   const [covered, setCovered] = useState(false);
-  const [label, setLabel] = useState('Face ID');
+  const [label, setLabel] = useState(DEFAULT_LOCK_LABEL);
   const leftAt = useRef<number | null>(null);
   const checkedStart = useRef(false);
   const asking = useRef(false);

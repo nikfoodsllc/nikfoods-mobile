@@ -145,7 +145,7 @@ export default function AddressForm({ address, onClose, onSaved }: { address: IA
       <Field label="Phone" value={phone} onChangeText={setPhone} error={errors.phone} keyboardType="phone-pad" />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: S.sm }}>
         <Text weight="semibold" size={15}>Make this my default address</Text>
-        <Switch value={isDefault} onValueChange={setIsDefault} trackColor={{ true: C.brand, false: '#E5E7EB' }} />
+        <Switch thumbColor="#FFFFFF" value={isDefault} onValueChange={setIsDefault} trackColor={{ true: C.brand, false: '#E5E7EB' }} />
       </View>
       {!!errors.general && (
         <View style={{ padding: S.md, borderRadius: R.md, backgroundColor: C.redBg, marginTop: S.md }}>

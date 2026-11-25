@@ -13,9 +13,9 @@ import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useApiClient } from '@/hooks/useApiClient';
-import { authenticate, isLockEnabled, lockSupport, setLockEnabled } from '@/lib/biometrics';
+import { authenticate, DEFAULT_LOCK_LABEL, isLockEnabled, lockSupport, setLockEnabled } from '@/lib/biometrics';
 import { forgetFaceIdSignInHere, isFaceIdSignInOn, turnOffFaceIdSignIn, turnOnFaceIdSignIn } from '@/lib/deviceLogin';
-import { unregisterPush } from '@/lib/push';
+import { unregisterPush, FALLBACK_DEVICE_NAME } from '@/lib/push';
 import * as localCart from '@/lib/localStorageCart';
 import { useScrollToTopOnTab } from '@/lib/tabScroll';
 import { useTabBarSpace } from '@/lib/useTabBarSpace';
@@ -61,7 +61,7 @@ export default function Account() {
   const { user, logout, updateUser } = useAuth();
   const { refreshCart } = useCart();
   const { authenticatedFetch } = useApiClient();
-  const [bio, setBio] = useState<{ available: boolean; label: string }>({ available: false, label: 'Face ID' });
+  const [bio, setBio] = useState<{ available: boolean; label: string }>({ available: false, label: DEFAULT_LOCK_LABEL });
   const [signInOn, setSignInOn] = useState(isFaceIdSignInOn());
   const [lockOn, setLockOn] = useState(isLockEnabled());
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function Account() {
 
   const changeSignIn = async (on: boolean) => {
     if (on) {
-      const ok = await turnOnFaceIdSignIn(Device.deviceName ?? 'iPhone');
+      const ok = await turnOnFaceIdSignIn(Device.deviceName ?? FALLBACK_DEVICE_NAME);
       setSignInOn(ok);
       if (!ok) toast(`Could not turn on ${bio.label} sign-in`, 'error');
     } else {
@@ -174,7 +174,7 @@ export default function Account() {
       toast('Password changed');
       // the site cancelled this phone's Face ID key with the old password: get a new one
       if (isFaceIdSignInOn()) {
-        const again = await turnOnFaceIdSignIn(Device.deviceName ?? 'iPhone');
+        const again = await turnOnFaceIdSignIn(Device.deviceName ?? FALLBACK_DEVICE_NAME);
         setSignInOn(again);
       }
     } catch {
@@ -269,13 +269,13 @@ export default function Account() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 58 }}>
               <Ionicons name="scan-outline" size={22} color={C.body} />
               <Text weight="medium" size={16} style={{ flex: 1 }}>Sign in with {bio.label}</Text>
-              <Switch value={signInOn} onValueChange={(v) => void changeSignIn(v)} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel={`Sign in with ${bio.label}`} />
+              <Switch thumbColor="#FFFFFF" value={signInOn} onValueChange={(v) => void changeSignIn(v)} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel={`Sign in with ${bio.label}`} />
             </View>
             <Divider />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.md, minHeight: 58 }}>
               <Ionicons name="lock-closed-outline" size={22} color={C.body} />
               <Text weight="medium" size={16} style={{ flex: 1 }}>Lock app with {bio.label}</Text>
-              <Switch value={lockOn} onValueChange={(v) => void changeLock(v)} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel={`Lock app with ${bio.label}`} />
+              <Switch thumbColor="#FFFFFF" value={lockOn} onValueChange={(v) => void changeLock(v)} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel={`Lock app with ${bio.label}`} />
             </View>
           </Card>
         )}

@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { lockSupport } from '@/lib/biometrics';
+import { DEFAULT_LOCK_LABEL, lockSupport } from '@/lib/biometrics';
 
 /**
  * Sign in with Face ID. After a normal sign-in the site gives this phone a long random key; it is kept in the iPhone Keychain
@@ -31,7 +31,7 @@ export async function turnOnFaceIdSignIn(deviceName: string): Promise<boolean> {
     const j = await r.json().catch(() => ({}));
     const key = j?.data?.deviceKey;
     if (!r.ok || typeof key !== 'string') return false;
-    await SecureStore.setItemAsync(KEY_NAME, key, { requireAuthentication: true, authenticationPrompt: 'Turn on Face ID sign-in' });
+    await SecureStore.setItemAsync(KEY_NAME, key, { requireAuthentication: true, authenticationPrompt: `Turn on ${DEFAULT_LOCK_LABEL} sign-in` });
     localStorage.setItem(ENABLED_FLAG, '1');
     localStorage.removeItem(DECLINED_FLAG);
     return true;
@@ -43,7 +43,7 @@ export async function turnOnFaceIdSignIn(deviceName: string): Promise<boolean> {
 /** Forget this phone's key (here and on the site). Face ID is asked to read it so the site can cancel it too; if that is not possible it is still removed here. */
 export async function turnOffFaceIdSignIn(): Promise<void> {
   try {
-    const key = await SecureStore.getItemAsync(KEY_NAME, { requireAuthentication: true, authenticationPrompt: 'Turn off Face ID sign-in' }).catch(() => null);
+    const key = await SecureStore.getItemAsync(KEY_NAME, { requireAuthentication: true, authenticationPrompt: `Turn off ${DEFAULT_LOCK_LABEL} sign-in` }).catch(() => null);
     if (key) await fetch('/api/auth/biometric', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceKey: key }) }).catch(() => undefined);
   } finally {
     await SecureStore.deleteItemAsync(KEY_NAME).catch(() => undefined);

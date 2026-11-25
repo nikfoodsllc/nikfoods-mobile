@@ -97,13 +97,13 @@ export default function NotificationSettings() {
         {state === 'denied' && (
           <Card style={{ gap: S.md }}>
             <Text weight="bold" size={17}>Notifications are off</Text>
-            <Text size={14} color={C.muted}>Turn them on for NikFoods in iPhone Settings.</Text>
+            <Text size={14} color={C.muted}>Turn them on for NikFoods in your phone's Settings.</Text>
             <Button label="Open Settings" variant="outline" onPress={() => void openPhoneSettings()} />
           </Card>
         )}
         {state === 'unavailable' && (
           <Card>
-            <Text size={14} color={C.muted}>Notifications work on an iPhone with the NikFoods app installed.</Text>
+            <Text size={14} color={C.muted}>Notifications work on a phone with the NikFoods app installed.</Text>
           </Card>
         )}
         {prefs && (
@@ -116,7 +116,7 @@ export default function NotificationSettings() {
                     <Text weight="medium" size={16}>{row.label}</Text>
                     <Text size={13} color={C.muted}>{row.hint}</Text>
                   </View>
-                  <Switch value={prefs[row.key]} onValueChange={(v) => void change(row.key, v)} trackColor={{ true: C.green, false: '#E5E7EB' }} accessibilityLabel={row.label} />
+                  <Switch thumbColor="#FFFFFF" value={prefs[row.key]} onValueChange={(v) => void change(row.key, v)} trackColor={{ true: C.green, false: '#E5E7EB' }} accessibilityLabel={row.label} />
                 </View>
               </View>
             ))}

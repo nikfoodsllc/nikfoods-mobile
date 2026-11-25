@@ -270,7 +270,7 @@ export default function PayLink() {
                 {data.credit.used > 0 ? `${money(data.credit.used)} applied` : `${money(data.credit.available)} available`}
               </Text>
             </View>
-            <Switch value={data.credit.used > 0} disabled={busy} onValueChange={(on) => { tap(); void credit(on ? 'use' : 'release'); }} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel="Use store credit" />
+            <Switch thumbColor="#FFFFFF" value={data.credit.used > 0} disabled={busy} onValueChange={(on) => { tap(); void credit(on ? 'use' : 'release'); }} trackColor={{ true: C.brand, false: '#E5E7EB' }} accessibilityLabel="Use store credit" />
           </Card>
         )}
       </ScrollView>

@@ -6,7 +6,7 @@ import { SITE_URL } from '@/constants/config';
 
 /**
 
- * sends order updates, menu alerts and cart reminders to it. The customer decides in iPhone Settings and in the app
+ * sends order updates, menu alerts and cart reminders to it. The customer decides in the phone's Settings and in the app
  * (Account > Notifications). The question is asked once: when the customer first signs in (PushBridge) or, if not yet, on the Order placed screen; after that
  * the customer uses Account > Notifications.
  */
@@ -17,16 +17,25 @@ const TOKEN_KEY = 'pushToken';
 const ASKED_KEY = 'pushAsked';
 const INSTALL_KEY = 'pushInstallId';
 
-/** A notification shown while the app is open appears as a banner, like any other. */
+/** Which app this is, for the site: 'ios' or 'android'. */
+export const PLATFORM: 'ios' | 'android' = Platform.OS === 'android' ? 'android' : 'ios';
+
+/** What the phone is called in the admin when it gives no name. */
+export const FALLBACK_DEVICE_NAME = Platform.OS === 'android' ? 'Android phone' : 'iPhone';
+
+/** A notification shown while the app is open appears as a banner, like any other. Android also needs a channel (sound + heads-up). */
 export function configureNotifications(): void {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
   });
+  if (Platform.OS === 'android') {
+    void Notifications.setNotificationChannelAsync('default', { name: 'Orders and updates', importance: Notifications.AndroidImportance.HIGH, sound: 'default', vibrationPattern: [0, 200, 120, 200] }).catch(() => undefined);
+  }
 }
 
-/** Notifications need a real iPhone (the simulator cannot get a push token). */
+/** Notifications need a real phone (iPhone or Android; simulators cannot get a push token). */
 export async function pushState(): Promise<PushState> {
-  if (Platform.OS !== 'ios' || !Device.isDevice) return 'unavailable';
+  if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !Device.isDevice) return 'unavailable';
   const p = await Notifications.getPermissionsAsync();
   if (p.granted || p.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return 'granted';
   if (p.status === 'denied' || p.canAskAgain === false) return 'denied';
@@ -78,7 +87,7 @@ async function reportPermission(authenticatedFetch: Fetcher, state: PushState): 
     const r = await authenticatedFetch('/api/push/device', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ installId: installId(), permission: state, platform: 'ios', deviceName: Device.deviceName ?? '', appVersion: Constants.expoConfig?.version ?? '', ...(state !== 'granted' && token ? { token } : {}) }),
+      body: JSON.stringify({ installId: installId(), permission: state, platform: PLATFORM, deviceName: Device.deviceName ?? '', appVersion: Constants.expoConfig?.version ?? '', ...(state !== 'granted' && token ? { token } : {}) }),
     });
     if (r.ok && state !== 'granted') localStorage.removeItem(TOKEN_KEY);
   } catch {
@@ -97,7 +106,7 @@ export async function registerPush(authenticatedFetch: Fetcher): Promise<boolean
     const r = await authenticatedFetch('/api/push/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, platform: 'ios', deviceName: Device.deviceName ?? '', appVersion: Constants.expoConfig?.version ?? '' }),
+      body: JSON.stringify({ token, platform: PLATFORM, deviceName: Device.deviceName ?? '', appVersion: Constants.expoConfig?.version ?? '' }),
     });
     if (r.ok) localStorage.setItem(TOKEN_KEY, token);
     return r.ok;

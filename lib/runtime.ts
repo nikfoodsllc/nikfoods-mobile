@@ -7,7 +7,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { SITE_URL } from '@/constants/config';
 
 const SECURE_KEYS = new Set(['accessToken', 'refreshToken']);
@@ -73,9 +73,9 @@ export async function initRuntime(): Promise<void> {
   const realFetch = globalThis.fetch.bind(globalThis);
   globalThis.fetch = ((input: any, init?: any) => {
     if (typeof input === 'string' && input.startsWith('/')) {
-      // tell the site this is the iPhone app (the admin's Order Source filter reads it)
+      // tell the site this is the app, and which one (the admin's Order Source shows App, and iPhone or Android)
       const headers = new Headers(init?.headers ?? {});
-      headers.set('x-nikfoods-client', 'ios');
+      headers.set('x-nikfoods-client', Platform.OS === 'android' ? 'android' : 'ios');
       return realFetch(`${SITE_URL}${input}`, { ...(init ?? {}), headers });
     }
     return realFetch(input, init);

@@ -35,7 +35,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#E07B39"
+        "backgroundColor": "#1E1B18"
       },
       "package": "com.nikfoods.mobile"
     },

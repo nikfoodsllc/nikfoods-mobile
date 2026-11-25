@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 /**
  * The website's Crisp chat (same inbox the team already answers), shown inside the app. The id is public (it is in every page of the
  * site); Crisp only serves the chat for pages on www.nikfoods.com, so the page below is loaded with that address as its base.
@@ -20,7 +21,7 @@ export function crispPageHtml(who: ChatWho = {}): string {
   const order = clean(who.orderId, 60);
   // JSON.stringify makes every value a safe JavaScript string; "<" is escaped so the value can never close the script tag
   const js = (v: string) => JSON.stringify(v).replace(/</g, '\\u003c');
-  const data: Array<[string, string]> = [['source', 'NikFoods iPhone app']];
+  const data: Array<[string, string]> = [['source', Platform.OS === 'android' ? 'NikFoods Android app' : 'NikFoods iPhone app']];
   if (order) data.push(['order_id', order]);
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>html,body{margin:0;height:100%;background:#fff}</style></head><body><script>
 window.$crisp=[];window.CRISP_WEBSITE_ID=${js(CRISP_WEBSITE_ID)};
